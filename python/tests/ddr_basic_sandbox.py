@@ -203,5 +203,5 @@ print(f'Re-run without re-writing the DDR data'.center(35, '-'))
 time.sleep(pasue_time)
 run_test(repeat=True, num_repeats=2, PLT=True)
 
-print(f'Re-run without re-writing the DDR data and without DAC FIFO reset'.center(35, '-'))
-run_test(repeat=True, num_repeats=2, PLT=True, KEEP_DAC_GOING=True)
+# print(f'Re-run without re-writing the DDR data and without DAC FIFO reset'.center(35, '-'))
+# run_test(repeat=True, num_repeats=2, PLT=True, KEEP_DAC_GOING=True)

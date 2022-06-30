@@ -344,7 +344,7 @@ for dv in [2**6, 2**8, 2**9]:
     _, chan_data = read_h5(data_dir, file_name=file_name.format(idx) + '.h5', chan_list=np.arange(8))
 
     # Long data sequence -- entire file 
-    adc_data, timestamp, dac_data, ads, read_errors = ddr.data_to_names(chan_data)
+    adc_data, timestamp, dac_data, ads_data, read_errors = ddr.data_to_names(chan_data)
 
     # Shorter data sequence, just one of the repeats
     # adc_data, timestamp, read_check, dac_data, ads = ddr.data_to_names(chan_data_one_repeat)
@@ -383,14 +383,14 @@ for dv in [2**6, 2**8, 2**9]:
     fig,ax=plt.subplots()
     for start_num in [0, 1, 2]:
         if AC_COUPLE:
-            ax.plot(t_ads[start_num::skip]*1e6, ads['A'][start_num::skip] - np.mean(ads['A'][start_num::skip]), 
+            ax.plot(t_ads[start_num::skip]*1e6, ads_data['A'][start_num::skip] - np.mean(ads_data['A'][start_num::skip]), 
                 marker = '+', label = f'ADS: A:{start_num}')
-            ax.plot(t_ads[start_num::skip]*1e6, ads['B'][start_num::skip] - np.mean(ads['B'][start_num::skip]), 
+            ax.plot(t_ads[start_num::skip]*1e6, ads_data['B'][start_num::skip] - np.mean(ads_data['B'][start_num::skip]), 
                 marker = '+', label = f'ADS: B:{start_num}')
         else:
-            ax.plot(t_ads[start_num::skip]*1e6, ads['A'][start_num::skip], 
+            ax.plot(t_ads[start_num::skip]*1e6, ads_data['A'][start_num::skip], 
                 marker = '+', label = f'ADS: A:{start_num}')
-            ax.plot(t_ads[start_num::skip]*1e6, ads['B'][start_num::skip], 
+            ax.plot(t_ads[start_num::skip]*1e6, ads_data['B'][start_num::skip], 
                 marker = '+', label = f'ADS: B:{start_num}')
     ax.legend()
     ax.set_xlabel('s [us]')

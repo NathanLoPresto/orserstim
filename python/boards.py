@@ -491,7 +491,7 @@ class Daq:
             200: 0x7,
         }  # in milli-volts full-scale
 
-        # exapander number, nibble_number
+        # DAC channel: (I/O exapander number, nibble_number)
         self.parameters["dac_expander_nibble"] = {
             0: (0, 3),
             1: (0, 2),
@@ -499,6 +499,12 @@ class Daq:
             3: (0, 0),
             4: (1, 3),
             5: (1, 2),
+        }
+
+        # ISEL bank: (I/O exapander number, nibble_number)
+        self.parameters["isel_expander_nibble"] = {
+            1: (1, 0),
+            2: (1, 1),
         }
 
         self.parameters["dac_resistors"] = {
@@ -535,6 +541,41 @@ class Daq:
                 gain_val, mask))
 
         return self.TCA[tca_ch].write(gain_val, mask=mask)
+
+
+    def set_isel(self, port, channels):
+        """ set the gain of the TMUX6136 switch so that the Howland current source is the DAC_CAL output
+        Args:
+            port: The X in IX_SELn. Options are 1 or 2. Determine which general purpose DAC (of two) and which Howland pump is used
+            channels: channels to set as list or 'all'. Channels are [0,1,2,3]
+                      (channels not included will be cleared -- hence there is no clear function)
+        Returns:
+            result of i2c transaction to TCA io expander
+        """
+        tca_ch = self.parameters["isel_expander_nibble"][port][0]
+        tca_nibble = self.parameters["isel_expander_nibble"][port][1]
+
+        if channels == 'all':
+            val = 0xF
+        elif channels is None:
+            val = 0x0
+        elif isinstance(channels, list):
+            val = 0
+            for c in channels:
+                val += (1<<c)
+        else:
+            print(f'Error invalid channels for isel {channels}')
+            print("Must be a list, 'all' or None ")
+            return -1 
+
+        mask = 0xF << (tca_nibble * 4)
+        val = (val) << (tca_nibble * 4)
+        print(
+            "Setting I sel to = 0x{:02X} with mask = 0x{:02X}".format(
+                val, mask))
+
+        return self.TCA[tca_ch].write(val, mask=mask)
+
 
     def predict_gain(self, bit_value):
         """ predict the DAC gain given the bit value written to the io Expander
