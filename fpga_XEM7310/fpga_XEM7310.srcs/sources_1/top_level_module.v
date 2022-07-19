@@ -902,7 +902,7 @@ module top_level_module(
             // last 2 bits of an AD5453 16-bit group for addressing,
             // 15th bit of the next AD5453 group to complete the address,
             // 16 bits data from DAC80508 group
-            .datain_1({spi_host_trigger_ds[k], 7'b0, ds_host_spi_data[k][23:0]}), // TODO: determine size for this, I believe it should be 24 bits of SPI message that the host must determine because the spi_fifo_driven is expecting 24 bits
+            .datain_1({spi_host_trigger_ds[k], 7'b0, ds_host_spi_data[k][31:0]}), // TODO: determine size for this, I believe it should be 24 bits of SPI message that the host must determine because the spi_fifo_driven is expecting 24 bits
             .datain_2({ads_data_valid, 11'b0, 1'b1, ds_host_spi_data[k][2:0], ads_data_out[15:0]}),  // data from ADS8686
             .datain_3({ads_data_valid, 11'b0, 1'b1, ds_host_spi_data[k][2:0], ads_data_out[31:16]}), // Default to output channel DAC0
             .datain_4({adc_valid_pulse[0], 11'b0, 1'b1, ds_host_spi_data[k][2:0], adc_val_reg[0][15:0]}), // data from AD7961, channel is selected by input wire 
@@ -919,7 +919,7 @@ module top_level_module(
                  .clk(clk_sys), .fifoclk(okClk), .rst(sys_rst),
                  .ss_0(ds_csb[k]), .mosi_0(ds_sdi[k]), .sclk_0(ds_sclk[k]), 
                  .data_rdy_0(data_ready_ds[k]), 
-                 .data_i(ds_spi_data[k][23:0]), 
+                 .data_i(ds_spi_data[k][31:0]), 
                  // register bridge 
                  .ep_write(regWrite),           //input wire 
                  .ep_address(regAddress),       //input wire [31:0] 
@@ -974,7 +974,7 @@ module top_level_module(
                 
         mux8to1_32wide spi_mux_bus_fast_dac( // lower 24 bits are data, most-significant bit (bit 31) is the data_ready signal 
             .datain_0({ddr_data_valid, 17'b0, po0_ep_datain[(p*16) +:14]}),
-            .datain_1({spi_host_trigger_fast_dac[p], 7'b0, host_spi_data[p][23:0]}), 
+            .datain_1({spi_host_trigger_fast_dac[p], 7'b0, host_spi_data[p][31:0]}), 
             .datain_2({ads_data_valid, 15'b0, ads_data_out[15:0]}), // 
             .datain_3({ddr_data_valid_norepeat[p], 17'b0, last_ddr_read[p]}), // 
             .datain_4({write_en_adc_o[0], 15'b0, adc_val[0][15:0]}), // data from AD7961  
@@ -989,7 +989,7 @@ module top_level_module(
         
         mux8to1_32wide filter_spi_mux_bus_fast_dac( // lower 24 bits are data, most-significant bit (bit 31) is the data_ready signal 
             .datain_0({ddr_data_valid, 17'b0, po0_ep_datain[(p*16) +:14]}),
-            .datain_1({spi_host_trigger_fast_dac[p], 7'b0, host_spi_data[p][23:0]}), 
+            .datain_1({spi_host_trigger_fast_dac[p], 7'b0, host_spi_data[p][31:0]}), 
             .datain_2({ads_data_valid, 15'b0, ads_data_out[15:0]}), // 
             .datain_3({ddr_data_valid_norepeat[p], 17'b0, last_ddr_read[p]}), // 
             .datain_4({write_en_adc_o[0], 15'b0, adc_val[0][15:0]}), // data from AD7961  
