@@ -988,7 +988,7 @@ module top_level_module(
         assign data_ready_fast_dac[p] = spi_data[p][31]; // assign MUX output MSB to the data_ready signal. 
         
         mux8to1_32wide filter_spi_mux_bus_fast_dac( // lower 24 bits are data, most-significant bit (bit 31) is the data_ready signal 
-            .datain_0({ddr_data_valid, 17'b0, po0_ep_datain[(p*16) +:14]}),
+            .datain_0({ddr_data_valid, 17'b0, po0_ep_datain[(p*0) +:32]}),
             .datain_1({spi_host_trigger_fast_dac[p], 7'b0, host_spi_data[p][31:0]}), 
             .datain_2({ads_data_valid, 15'b0, ads_data_out[15:0]}), // 
             .datain_3({ddr_data_valid_norepeat[p], 17'b0, last_ddr_read[p]}), // 
