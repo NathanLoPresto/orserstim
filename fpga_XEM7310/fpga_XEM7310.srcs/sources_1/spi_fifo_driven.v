@@ -45,7 +45,7 @@ module spi_fifo_driven #(parameter ADDR = 0) (
      output reg data_out_ready,
      output wire [13:0] filter_out_modified,
      /*****Filter Data and Enable Separate from CMD signals*****/
-     input wire [23:0] filter_data_i,
+     input wire [31:0] filter_data_i,
      input wire data_rdy_0_filt,
      input wire downsample_en,
      input wire sum_en
