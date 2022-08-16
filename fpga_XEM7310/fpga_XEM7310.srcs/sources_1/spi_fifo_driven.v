@@ -29,6 +29,7 @@ module spi_fifo_driven #(parameter ADDR = 0) (
 	 output wire ss_0,
      output wire sclk_0,
      output wire mosi_0,
+     input wire miso_0,
      input wire [31:0] data_i,
      /*****Register Bridge and DDR Signals******/
      //input wire ep_read,
@@ -199,7 +200,7 @@ module spi_fifo_driven #(parameter ADDR = 0) (
       .wb_adr_i(adr_0[4:0]), .wb_dat_i(dat_o_0), .wb_dat_o(dat_i_0), 
       .wb_sel_i(sel_0), .wb_we_i(we_0), .wb_stb_i(stb_0), 
       .wb_cyc_i(cyc_0), .wb_ack_o(ack_0), .wb_err_o(err_0), .wb_int_o(int_o_0),
-      .ss_pad_o(ss_0), .sclk_pad_o(sclk_0), .mosi_pad_o(mosi_0), .miso_pad_i(data_i), .miso_b_pad_i(1'b0)
+      .ss_pad_o(ss_0), .sclk_pad_o(sclk_0), .mosi_pad_o(mosi_0), .miso_pad_i(miso_0), .miso_b_pad_i(1'b0)
     );
      
 endmodule

@@ -76,6 +76,7 @@ module top_level_module(
     output wire [(AD5453_NUM-1):0]d_sclk,
     output wire [(AD5453_NUM-1):0]d_csb,
     output wire [(AD5453_NUM-1):0]d_sdi,
+    input wire  [(AD5452_NUM-1):0]d_sdo,
 
     //ADS8686
     output wire ads_csb,
@@ -164,7 +165,8 @@ module top_level_module(
 	assign led[3] = ~adc_fifo_halffull[1];
 	assign led[4] = ~adc_fifo_full[1];
 	assign led[5] = ~ep40trig[`AD7961_PLL_RESET];
-	assign led[6] = ~(ep40trig[`AD7961_RESET_GEN_BIT+i] | adc_sync_rst);
+	//Was failing the synthesis, doesn't see, critical
+	//assign led[6] = ~(ep40trig[`AD7961_RESET_GEN_BIT+i] | adc_sync_rst);
     assign led[7] = 1'b0;
 
     // WireIn 0 configures MUX for logic analyzer debug. CSB signals 
@@ -917,7 +919,7 @@ module top_level_module(
             
         spi_fifo_driven #(.ADDR(`DAC80508_REGBRIDGE_OFFSET_GEN_ADDR + k*20))spi_fifo1 (
                  .clk(clk_sys), .fifoclk(okClk), .rst(sys_rst),
-                 .ss_0(ds_csb[k]), .mosi_0(ds_sdi[k]), .sclk_0(ds_sclk[k]), 
+                 .ss_0(ds_csb[k]), .mosi_0(ds_sdi[k]), .miso_0(1'b0), .sclk_0(ds_sclk[k]), 
                  .data_rdy_0(data_ready_ds[k]), 
                  .data_i(ds_spi_data[k][31:0]), 
                  // register bridge 
@@ -1004,7 +1006,7 @@ module top_level_module(
             
         spi_fifo_driven #(.ADDR(`AD5453_REGBRIDGE_OFFSET_GEN_ADDR + p*20))spi_fifo0 (
                  .clk(clk_sys), .fifoclk(okClk), .rst(sys_rst),
-                 .ss_0(d_csb[p]), .mosi_0(d_sdi[p]), .sclk_0(d_sclk[p]), 
+                 .ss_0(d_csb[p]), .mosi_0(d_sdi[p]), .miso_0(d_sdo[p]), .sclk_0(d_sclk[p]), 
                  .data_rdy_0(data_ready_fast_dac[p]), 
                  .data_i(spi_data[p]),
                  // register bridge 
