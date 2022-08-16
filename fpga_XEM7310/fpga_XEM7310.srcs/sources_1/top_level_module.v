@@ -76,7 +76,7 @@ module top_level_module(
     output wire [(AD5453_NUM-1):0]d_sclk,
     output wire [(AD5453_NUM-1):0]d_csb,
     output wire [(AD5453_NUM-1):0]d_sdi,
-    input wire  [(AD5452_NUM-1):0]d_sdo,
+    input wire  [(AD5453_NUM-1):0]d_sdo,
 
     //ADS8686
     output wire ads_csb,
@@ -975,7 +975,7 @@ module top_level_module(
         end
                 
         mux8to1_32wide spi_mux_bus_fast_dac( // lower 24 bits are data, most-significant bit (bit 31) is the data_ready signal 
-            .datain_0({ddr_data_valid, 17'b0, po0_ep_datain[(p*16) +:14]}),
+            .datain_0({ddr_data_valid, po0_ep_datain[(p*0) +:32]}),
             .datain_1({spi_host_trigger_fast_dac[p], 7'b0, host_spi_data[p][31:0]}), 
             .datain_2({ads_data_valid, 15'b0, ads_data_out[15:0]}), // 
             .datain_3({ddr_data_valid_norepeat[p], 17'b0, last_ddr_read[p]}), // 
@@ -983,7 +983,7 @@ module top_level_module(
             .datain_5({write_en_adc_o[1], 15'b0, adc_val[1][15:0]}), // data from AD7961
             .datain_6({write_en_adc_o[2], 15'b0, adc_val[2][15:0]}), // data from AD7961
             .datain_7({write_en_adc_o[3], 15'b0, adc_val[3][15:0]}), // data from AD7961
-            .sel(ep03wire[(`AD5453_DATA_SEL_GEN_BIT + p*`AD5453_DATA_SEL_GEN_BIT_LEN) +: `AD5453_DATA_SEL_GEN_BIT_LEN]),
+            .sel(3'b000),
             .dataout({spi_data[p]})
         );
         
@@ -998,7 +998,7 @@ module top_level_module(
             .datain_5({write_en_adc_o[1], 15'b0, adc_val[1][15:0]}), // data from AD7961
             .datain_6({write_en_adc_o[2], 15'b0, adc_val[2][15:0]}), // data from AD7961
             .datain_7({write_en_adc_o[3], 15'b0, adc_val[3][15:0]}), // data from AD7961
-            .sel(ep_wire_filtdata[(`AD5453_FILTER_DATA_SEL_GEN_BIT + p*`AD5453_FILTER_DATA_SEL_GEN_BIT_LEN) +: `AD5453_FILTER_DATA_SEL_GEN_BIT_LEN]),
+            .sel(3'b000),
             .dataout({filter_spi_data[p]})
         );
         
