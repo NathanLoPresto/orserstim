@@ -801,19 +801,19 @@ module top_level_module(
     always @(*) begin 
         if (ep03wire[`DDR3_ADC_DEBUG] == 1'b0) begin 
             case (cycle_cnt)
-                4'd9:    adc_ddr_data = {ads_last_read[15:0],       timestamp_snapshot[15:0],  dac_val_out[2][15:0], dac_val_out[0][15:0], adc_val[3][15:0], adc_val[2][15:0], adc_val[1][15:0], adc_val[0][15:0]};
-                4'd8:    adc_ddr_data = {ads_last_read[31:16],      timestamp_snapshot[31:16], dac_val_out[3][15:0], dac_val_out[1][15:0], adc_val[3][15:0], adc_val[2][15:0], adc_val[1][15:0], adc_val[0][15:0]};
-                4'd7:    adc_ddr_data = {timestamp_snapshot[47:32], dac_val_out[4][15:0],      dac_val_out[2][15:0], dac_val_out[0][15:0], adc_val[3][15:0], adc_val[2][15:0], adc_val[1][15:0], adc_val[0][15:0]};
-                4'd6:    adc_ddr_data = {16'haa55,                  dac_val_out[5][15:0],      dac_val_out[3][15:0], dac_val_out[1][15:0], adc_val[3][15:0], adc_val[2][15:0], adc_val[1][15:0], adc_val[0][15:0]};
-                4'd5:    adc_ddr_data = {{11'h28b, ads_sequence_count},                  dac_val_out[4][15:0],      dac_val_out[2][15:0], dac_val_out[0][15:0], adc_val[3][15:0], adc_val[2][15:0], adc_val[1][15:0], adc_val[0][15:0]};
+                4'd9:    adc_ddr_data = {ads_last_read[15:0],       timestamp_snapshot[15:0],  dac_val_out[2][15:0], dac_val_out[0][15:0], adc_val[3][15:0], adc_val[2][15:0], intan_results[3][31:16], intan_results[2][15:0]};
+                4'd8:    adc_ddr_data = {ads_last_read[31:16],      timestamp_snapshot[31:16], dac_val_out[3][15:0], dac_val_out[1][15:0], adc_val[3][15:0], adc_val[2][15:0], intan_results[3][31:16], intan_results[2][15:0]};
+                4'd7:    adc_ddr_data = {timestamp_snapshot[47:32], dac_val_out[4][15:0],      dac_val_out[2][15:0], dac_val_out[0][15:0], adc_val[3][15:0], adc_val[2][15:0], intan_results[3][31:16], intan_results[2][15:0]};
+                4'd6:    adc_ddr_data = {16'haa55,                  dac_val_out[5][15:0],      dac_val_out[3][15:0], dac_val_out[1][15:0], adc_val[3][15:0], adc_val[2][15:0], intan_results[3][31:16], intan_results[2][15:0]};
+                4'd5:    adc_ddr_data = {{11'h28b, ads_sequence_count},                  dac_val_out[4][15:0],      dac_val_out[2][15:0], dac_val_out[0][15:0], adc_val[3][15:0], adc_val[2][15:0], intan_results[3][31:16], intan_results[2][15:0]};
 
-                4'd4:    adc_ddr_data = {ads_last_read[15:0],       timestamp_snapshot[15:0],  dac_val_out[3][15:0], dac_val_out[1][15:0], adc_val[3][15:0], adc_val[2][15:0], adc_val[1][15:0], adc_val[0][15:0]};
-                4'd3:    adc_ddr_data = {ads_last_read[31:16],      timestamp_snapshot[31:16], dac_val_out[2][15:0], dac_val_out[0][15:0], adc_val[3][15:0], adc_val[2][15:0], adc_val[1][15:0], adc_val[0][15:0]};
-                4'd2:    adc_ddr_data = {timestamp_snapshot[47:32], dac_val_out[5][15:0],      dac_val_out[3][15:0], dac_val_out[1][15:0], adc_val[3][15:0], adc_val[2][15:0], adc_val[1][15:0], adc_val[0][15:0]};
-                4'd1:    adc_ddr_data = {16'h77bb,                  dac_val_out[4][15:0],      dac_val_out[2][15:0], dac_val_out[0][15:0], adc_val[3][15:0], adc_val[2][15:0], adc_val[1][15:0], adc_val[0][15:0]};
-                4'd0:    adc_ddr_data = { {11'h28c, ads_sequence_count},                  dac_val_out[5][15:0],      dac_val_out[3][15:0], dac_val_out[1][15:0], adc_val[3][15:0], adc_val[2][15:0], adc_val[1][15:0], adc_val[0][15:0]};
+                4'd4:    adc_ddr_data = {ads_last_read[15:0],       timestamp_snapshot[15:0],  dac_val_out[3][15:0], dac_val_out[1][15:0], adc_val[3][15:0], adc_val[2][15:0], intan_results[3][31:16], intan_results[2][15:0]};
+                4'd3:    adc_ddr_data = {ads_last_read[31:16],      timestamp_snapshot[31:16], dac_val_out[2][15:0], dac_val_out[0][15:0], adc_val[3][15:0], adc_val[2][15:0], intan_results[3][31:16], intan_results[2][15:0]};
+                4'd2:    adc_ddr_data = {timestamp_snapshot[47:32], dac_val_out[5][15:0],      dac_val_out[3][15:0], dac_val_out[1][15:0], adc_val[3][15:0], adc_val[2][15:0], intan_results[3][31:16], intan_results[2][15:0]};
+                4'd1:    adc_ddr_data = {16'h77bb,                  dac_val_out[4][15:0],      dac_val_out[2][15:0], dac_val_out[0][15:0], adc_val[3][15:0], adc_val[2][15:0], intan_results[3][31:16], intan_results[2][15:0]};
+                4'd0:    adc_ddr_data = { {11'h28c, ads_sequence_count},                  dac_val_out[5][15:0],      dac_val_out[3][15:0], dac_val_out[1][15:0], adc_val[3][15:0], adc_val[2][15:0], intan_results[3][31:16], intan_results[2][15:0]};
                 
-                default: adc_ddr_data = {ads_last_read[15:0],       timestamp_snapshot[15:0],  dac_val_out[2][15:0], dac_val_out[0][15:0], adc_val[3][15:0], adc_val[2][15:0], adc_val[1][15:0], adc_val[0][15:0]};
+                default: adc_ddr_data = {ads_last_read[15:0],       timestamp_snapshot[15:0],  dac_val_out[2][15:0], dac_val_out[0][15:0], adc_val[3][15:0], adc_val[2][15:0], intan_results[3][31:16], intan_results[2][15:0]};
             endcase 
             if (ep03wire[`DDR3_USE_ADC_READY] == 1'b1) adc_ddr_wr_en = write_en_adc_o[0]; // Pulse to use to synchronize DACs and the ADS8686
             else adc_ddr_wr_en = adc_rd_en_emulator;
@@ -926,6 +926,8 @@ module top_level_module(
                  .ep_write(regWrite),           //input wire 
                  .ep_address(regAddress),       //input wire [31:0] 
                  .ep_dataout_coeff(regDataOut), //input wire [31:0] (TODO: name is confusing}. Output from OKRegisterBridge
+                 
+                 .intan_out(intan_results[k]),
 
                  // All DAC80508 output channels have the form {0b1, number_output_channel}
                  .rd_en_0(rd_en_ds[k]),   //out: debug of state machine
@@ -948,6 +950,9 @@ module top_level_module(
     wire [31:0] filter_spi_data[0:(AD5453_NUM-1)];
     wire [31:0] host_spi_data[0:(AD5453_NUM-1)];
     wire [(AD5453_NUM-1):0] spi_host_trigger_fast_dac; 
+    
+    
+    wire [31:0] intan_results [0:AD5453_NUM-1];
 
     wire [31:0] coeff_debug_out1[0:(AD5453_NUM-1)];
     wire [31:0] coeff_debug_out2[0:(AD5453_NUM-1)];
@@ -983,7 +988,7 @@ module top_level_module(
             .datain_5({write_en_adc_o[1], 15'b0, adc_val[1][15:0]}), // data from AD7961
             .datain_6({write_en_adc_o[2], 15'b0, adc_val[2][15:0]}), // data from AD7961
             .datain_7({write_en_adc_o[3], 15'b0, adc_val[3][15:0]}), // data from AD7961
-            .sel(3'b000),
+            .sel(ep03wire[(`AD5453_DATA_SEL_GEN_BIT + p*`AD5453_DATA_SEL_GEN_BIT_LEN) +: `AD5453_DATA_SEL_GEN_BIT_LEN]),
             .dataout({spi_data[p]})
         );
         
@@ -998,7 +1003,7 @@ module top_level_module(
             .datain_5({write_en_adc_o[1], 15'b0, adc_val[1][15:0]}), // data from AD7961
             .datain_6({write_en_adc_o[2], 15'b0, adc_val[2][15:0]}), // data from AD7961
             .datain_7({write_en_adc_o[3], 15'b0, adc_val[3][15:0]}), // data from AD7961
-            .sel(3'b000),
+            .sel(ep_wire_filtdata[(`AD5453_FILTER_DATA_SEL_GEN_BIT + p*`AD5453_FILTER_DATA_SEL_GEN_BIT_LEN) +: `AD5453_FILTER_DATA_SEL_GEN_BIT_LEN]),
             .dataout({filter_spi_data[p]})
         );
         
@@ -1013,7 +1018,9 @@ module top_level_module(
                  .ep_write(regWrite),           //input wire 
                  .ep_address(regAddress),       //input wire [31:0] 
                  .ep_dataout_coeff(regDataOut), //input wire [31:0] (TODO: name is confusing}. Output from OKRegisterBridge
-
+                 
+                 .intan_out(intan_results[p]),
+                 
                  .rd_en_0(rd_en_fast_dac[p]),   //out: debug only 
                  .regTrigger(ep40trig[`AD5453_REG_TRIG_GEN_BIT + p]), //input  -- sends state machine to init. Use for after updates via register bridge.
                  .filter_sel(ep_wire_filtsel[`AD5453_FILTER_SEL_GEN_BIT + p]),
