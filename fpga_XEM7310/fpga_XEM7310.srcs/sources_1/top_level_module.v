@@ -76,7 +76,7 @@ module top_level_module(
     output wire [(AD5453_NUM-1):0]d_sclk,
     output wire [(AD5453_NUM-1):0]d_csb,
     output wire [(AD5453_NUM-1):0]d_sdi,
-    input wire  [(AD5453_NUM-1):0]d_sdo,
+    //input wire  [(AD5453_NUM-1):0]d_sdo,
 
     //ADS8686
     output wire ads_csb,
@@ -149,6 +149,9 @@ module top_level_module(
 	.locked(adc_pll_locked)
 	);
 
+    
+    reg [(AD5453_NUM-1):0]d_sdo;
+    
 	wire adc_sync_rst;
     wire [31:0]adc_pipe_ep_datain[0:(FADC_NUM-1)];
     wire [(FADC_NUM-1):0]write_en_adc_o;
