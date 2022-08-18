@@ -37,6 +37,7 @@ module spi_fifo_driven #(parameter ADDR = 0) (
      input wire [31:0] ep_address,
      input wire [31:0] ep_dataout_coeff,
      
+     output wire data_valid,
      output wire [31:0] intan_out,
      
      //output wire [31:0] ep_datain,
@@ -198,6 +199,7 @@ module spi_fifo_driven #(parameter ADDR = 0) (
     );
     
     assign intan_out = wb_cmd_dataout_0[31:0];
+    assign data_valid = (!wb_cmd_dataout_0[32] && !wb_cmd_dataout_0[33] && !rsp_stb_0);
     
     //SPI master core for AD796x and AD5453
     spi_top i_spi_top_0 (
