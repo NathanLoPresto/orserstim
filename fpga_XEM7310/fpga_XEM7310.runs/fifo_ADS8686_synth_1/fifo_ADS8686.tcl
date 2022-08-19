@@ -3,6 +3,58 @@
 # 
 
 set TIME_start [clock seconds] 
+namespace eval ::optrace {
+  variable script "C:/Users/lopr5624/orserstim/fpga_XEM7310/fpga_XEM7310.runs/fifo_ADS8686_synth_1/fifo_ADS8686.tcl"
+  variable category "vivado_synth"
+}
+
+# Try to connect to running dispatch if we haven't done so already.
+# This code assumes that the Tcl interpreter is not using threads,
+# since the ::dispatch::connected variable isn't mutex protected.
+if {![info exists ::dispatch::connected]} {
+  namespace eval ::dispatch {
+    variable connected false
+    if {[llength [array get env XILINX_CD_CONNECT_ID]] > 0} {
+      set result "true"
+      if {[catch {
+        if {[lsearch -exact [package names] DispatchTcl] < 0} {
+          set result [load librdi_cd_clienttcl[info sharedlibextension]] 
+        }
+        if {$result eq "false"} {
+          puts "WARNING: Could not load dispatch client library"
+        }
+        set connect_id [ ::dispatch::init_client -mode EXISTING_SERVER ]
+        if { $connect_id eq "" } {
+          puts "WARNING: Could not initialize dispatch client"
+        } else {
+          puts "INFO: Dispatch client connection id - $connect_id"
+          set connected true
+        }
+      } catch_res]} {
+        puts "WARNING: failed to connect to dispatch server - $catch_res"
+      }
+    }
+  }
+}
+if {$::dispatch::connected} {
+  # Remove the dummy proc if it exists.
+  if { [expr {[llength [info procs ::OPTRACE]] > 0}] } {
+    rename ::OPTRACE ""
+  }
+  proc ::OPTRACE { task action {tags {} } } {
+    ::vitis_log::op_trace "$task" $action -tags $tags -script $::optrace::script -category $::optrace::category
+  }
+  # dispatch is generic. We specifically want to attach logging.
+  ::vitis_log::connect_client
+} else {
+  # Add dummy proc if it doesn't exist.
+  if { [expr {[llength [info procs ::OPTRACE]] == 0}] } {
+    proc ::OPTRACE {{arg1 \"\" } {arg2 \"\"} {arg3 \"\" } {arg4 \"\"} {arg5 \"\" } {arg6 \"\"}} {
+        # Do nothing
+    }
+  }
+}
+
 proc create_report { reportName command } {
   set status "."
   append status $reportName ".fail"
@@ -17,26 +69,31 @@ proc create_report { reportName command } {
     send_msg_id runtcl-5 warning "$msg"
   }
 }
+OPTRACE "fifo_ADS8686_synth_1" START { ROLLUP_AUTO }
 set_param project.vivado.isBlockSynthRun true
 set_msg_config -msgmgr_mode ooc_run
+OPTRACE "Creating in-memory project" START { }
 create_project -in_memory -part xc7a75tfgg484-1
 
 set_param project.singleFileAddWarning.threshold 0
 set_param project.compositeFile.enableAutoGeneration 0
 set_param synth.vivado.isSynthRun true
 set_msg_config -source 4 -id {IP_Flow 19-2162} -severity warning -new_severity info
-set_property webtalk.parent_dir C:/Users/delg5279/covg_fpga_project/covg_fpga/fpga_XEM7310/fpga_XEM7310.cache/wt [current_project]
-set_property parent.project_path C:/Users/delg5279/covg_fpga_project/covg_fpga/fpga_XEM7310/fpga_XEM7310.xpr [current_project]
+set_property webtalk.parent_dir C:/Users/lopr5624/orserstim/fpga_XEM7310/fpga_XEM7310.cache/wt [current_project]
+set_property parent.project_path C:/Users/lopr5624/orserstim/fpga_XEM7310/fpga_XEM7310.xpr [current_project]
 set_property XPM_LIBRARIES {XPM_CDC XPM_MEMORY} [current_project]
 set_property default_lib xil_defaultlib [current_project]
 set_property target_language Verilog [current_project]
-set_property ip_output_repo c:/Users/delg5279/covg_fpga_project/covg_fpga/fpga_XEM7310/fpga_XEM7310.cache/ip [current_project]
+set_property ip_output_repo c:/Users/lopr5624/orserstim/fpga_XEM7310/fpga_XEM7310.cache/ip [current_project]
 set_property ip_cache_permissions {read write} [current_project]
-read_ip -quiet C:/Users/delg5279/covg_fpga_project/covg_fpga/fpga_XEM7310/fpga_XEM7310.srcs/sources_1/ip/fifo_ADS8686/fifo_ADS8686.xci
-set_property used_in_implementation false [get_files -all c:/Users/delg5279/covg_fpga_project/covg_fpga/fpga_XEM7310/fpga_XEM7310.srcs/sources_1/ip/fifo_ADS8686/fifo_ADS8686.xdc]
-set_property used_in_implementation false [get_files -all c:/Users/delg5279/covg_fpga_project/covg_fpga/fpga_XEM7310/fpga_XEM7310.srcs/sources_1/ip/fifo_ADS8686/fifo_ADS8686_clocks.xdc]
-set_property used_in_implementation false [get_files -all c:/Users/delg5279/covg_fpga_project/covg_fpga/fpga_XEM7310/fpga_XEM7310.srcs/sources_1/ip/fifo_ADS8686/fifo_ADS8686_ooc.xdc]
+OPTRACE "Creating in-memory project" END { }
+OPTRACE "Adding files" START { }
+read_ip -quiet C:/Users/lopr5624/orserstim/fpga_XEM7310/fpga_XEM7310.srcs/sources_1/ip/fifo_ADS8686/fifo_ADS8686.xci
+set_property used_in_implementation false [get_files -all c:/Users/lopr5624/orserstim/fpga_XEM7310/fpga_XEM7310.srcs/sources_1/ip/fifo_ADS8686/fifo_ADS8686.xdc]
+set_property used_in_implementation false [get_files -all c:/Users/lopr5624/orserstim/fpga_XEM7310/fpga_XEM7310.srcs/sources_1/ip/fifo_ADS8686/fifo_ADS8686_clocks.xdc]
+set_property used_in_implementation false [get_files -all c:/Users/lopr5624/orserstim/fpga_XEM7310/fpga_XEM7310.srcs/sources_1/ip/fifo_ADS8686/fifo_ADS8686_ooc.xdc]
 
+OPTRACE "Adding files" END { }
 # Mark all dcp files as not used in implementation to prevent them from being
 # stitched into the results of this synthesis run. Any black boxes in the
 # design are intentionally left as such for best results. Dcp files will be
@@ -47,14 +104,19 @@ foreach dcp [get_files -quiet -all -filter file_type=="Design\ Checkpoint"] {
 }
 read_xdc dont_touch.xdc
 set_property used_in_implementation false [get_files dont_touch.xdc]
-set_param ips.enableIPCacheLiteLoad 0
+set_param ips.enableIPCacheLiteLoad 1
+OPTRACE "Configure IP Cache" START { }
 
-set cached_ip [config_ip_cache -export -no_bom -use_project_ipc -dir C:/Users/delg5279/covg_fpga_project/covg_fpga/fpga_XEM7310/fpga_XEM7310.runs/fifo_ADS8686_synth_1 -new_name fifo_ADS8686 -ip [get_ips fifo_ADS8686]]
+set cacheID [config_ip_cache -export -no_bom  -dir C:/Users/lopr5624/orserstim/fpga_XEM7310/fpga_XEM7310.runs/fifo_ADS8686_synth_1 -new_name fifo_ADS8686 -ip [get_ips fifo_ADS8686]]
 
-if { $cached_ip eq {} } {
+OPTRACE "Configure IP Cache" END { }
+if { $cacheID == "" } {
 close [open __synthesis_is_running__ w]
 
-synth_design -top fifo_ADS8686 -part xc7a75tfgg484-1 -mode out_of_context
+OPTRACE "synth_design" START { }
+synth_design -top fifo_ADS8686 -part xc7a75tfgg484-1 -incremental_mode off -mode out_of_context
+OPTRACE "synth_design" END { }
+OPTRACE "Write IP Cache" START { }
 
 #---------------------------------------------------------
 # Generate Checkpoint/Stub/Simulation Files For IP Cache
@@ -77,45 +139,55 @@ catch {
 
  write_vhdl -force -mode funcsim -rename_top decalper_eb_ot_sdeen_pot_pi_dehcac_xnilix -prefix decalper_eb_ot_sdeen_pot_pi_dehcac_xnilix_ fifo_ADS8686_sim_netlist.vhdl
  lappend ipCachedFiles fifo_ADS8686_sim_netlist.vhdl
-set TIME_taken [expr [clock seconds] - $TIME_start]
+ set TIME_taken [expr [clock seconds] - $TIME_start]
 
- config_ip_cache -add -dcp fifo_ADS8686.dcp -move_files $ipCachedFiles -use_project_ipc  -synth_runtime $TIME_taken  -ip [get_ips fifo_ADS8686]
+ if { [get_msg_config -count -severity {CRITICAL WARNING}] == 0 } {
+  config_ip_cache -add -dcp fifo_ADS8686.dcp -move_files $ipCachedFiles   -synth_runtime $TIME_taken  -ip [get_ips fifo_ADS8686]
+ }
+OPTRACE "Write IP Cache" END { }
+}
+if { [get_msg_config -count -severity {CRITICAL WARNING}] > 0 } {
+ send_msg_id runtcl-6 info "Synthesis results are not added to the cache due to CRITICAL_WARNING"
 }
 
 rename_ref -prefix_all fifo_ADS8686_
 
+OPTRACE "write_checkpoint" START { CHECKPOINT }
 # disable binary constraint mode for synth run checkpoints
 set_param constraints.enableBinaryConstraints false
 write_checkpoint -force -noxdef fifo_ADS8686.dcp
+OPTRACE "write_checkpoint" END { }
+OPTRACE "synth reports" START { REPORT }
 create_report "fifo_ADS8686_synth_1_synth_report_utilization_0" "report_utilization -file fifo_ADS8686_utilization_synth.rpt -pb fifo_ADS8686_utilization_synth.pb"
+OPTRACE "synth reports" END { }
 
 if { [catch {
-  file copy -force C:/Users/delg5279/covg_fpga_project/covg_fpga/fpga_XEM7310/fpga_XEM7310.runs/fifo_ADS8686_synth_1/fifo_ADS8686.dcp C:/Users/delg5279/covg_fpga_project/covg_fpga/fpga_XEM7310/fpga_XEM7310.srcs/sources_1/ip/fifo_ADS8686/fifo_ADS8686.dcp
+  file copy -force C:/Users/lopr5624/orserstim/fpga_XEM7310/fpga_XEM7310.runs/fifo_ADS8686_synth_1/fifo_ADS8686.dcp c:/Users/lopr5624/orserstim/fpga_XEM7310/fpga_XEM7310.srcs/sources_1/ip/fifo_ADS8686/fifo_ADS8686.dcp
 } _RESULT ] } { 
-  send_msg_id runtcl-3 error "ERROR: Unable to successfully create or copy the sub-design checkpoint file."
+  send_msg_id runtcl-3 status "ERROR: Unable to successfully create or copy the sub-design checkpoint file."
   error "ERROR: Unable to successfully create or copy the sub-design checkpoint file."
 }
 
 if { [catch {
-  write_verilog -force -mode synth_stub C:/Users/delg5279/covg_fpga_project/covg_fpga/fpga_XEM7310/fpga_XEM7310.srcs/sources_1/ip/fifo_ADS8686/fifo_ADS8686_stub.v
+  write_verilog -force -mode synth_stub c:/Users/lopr5624/orserstim/fpga_XEM7310/fpga_XEM7310.srcs/sources_1/ip/fifo_ADS8686/fifo_ADS8686_stub.v
 } _RESULT ] } { 
   puts "CRITICAL WARNING: Unable to successfully create a Verilog synthesis stub for the sub-design. This may lead to errors in top level synthesis of the design. Error reported: $_RESULT"
 }
 
 if { [catch {
-  write_vhdl -force -mode synth_stub C:/Users/delg5279/covg_fpga_project/covg_fpga/fpga_XEM7310/fpga_XEM7310.srcs/sources_1/ip/fifo_ADS8686/fifo_ADS8686_stub.vhdl
+  write_vhdl -force -mode synth_stub c:/Users/lopr5624/orserstim/fpga_XEM7310/fpga_XEM7310.srcs/sources_1/ip/fifo_ADS8686/fifo_ADS8686_stub.vhdl
 } _RESULT ] } { 
   puts "CRITICAL WARNING: Unable to successfully create a VHDL synthesis stub for the sub-design. This may lead to errors in top level synthesis of the design. Error reported: $_RESULT"
 }
 
 if { [catch {
-  write_verilog -force -mode funcsim C:/Users/delg5279/covg_fpga_project/covg_fpga/fpga_XEM7310/fpga_XEM7310.srcs/sources_1/ip/fifo_ADS8686/fifo_ADS8686_sim_netlist.v
+  write_verilog -force -mode funcsim c:/Users/lopr5624/orserstim/fpga_XEM7310/fpga_XEM7310.srcs/sources_1/ip/fifo_ADS8686/fifo_ADS8686_sim_netlist.v
 } _RESULT ] } { 
   puts "CRITICAL WARNING: Unable to successfully create the Verilog functional simulation sub-design file. Post-Synthesis Functional Simulation with this file may not be possible or may give incorrect results. Error reported: $_RESULT"
 }
 
 if { [catch {
-  write_vhdl -force -mode funcsim C:/Users/delg5279/covg_fpga_project/covg_fpga/fpga_XEM7310/fpga_XEM7310.srcs/sources_1/ip/fifo_ADS8686/fifo_ADS8686_sim_netlist.vhdl
+  write_vhdl -force -mode funcsim c:/Users/lopr5624/orserstim/fpga_XEM7310/fpga_XEM7310.srcs/sources_1/ip/fifo_ADS8686/fifo_ADS8686_sim_netlist.vhdl
 } _RESULT ] } { 
   puts "CRITICAL WARNING: Unable to successfully create the VHDL functional simulation sub-design file. Post-Synthesis Functional Simulation with this file may not be possible or may give incorrect results. Error reported: $_RESULT"
 }
@@ -125,48 +197,49 @@ if { [catch {
 
 
 if { [catch {
-  file copy -force C:/Users/delg5279/covg_fpga_project/covg_fpga/fpga_XEM7310/fpga_XEM7310.runs/fifo_ADS8686_synth_1/fifo_ADS8686.dcp C:/Users/delg5279/covg_fpga_project/covg_fpga/fpga_XEM7310/fpga_XEM7310.srcs/sources_1/ip/fifo_ADS8686/fifo_ADS8686.dcp
+  file copy -force C:/Users/lopr5624/orserstim/fpga_XEM7310/fpga_XEM7310.runs/fifo_ADS8686_synth_1/fifo_ADS8686.dcp c:/Users/lopr5624/orserstim/fpga_XEM7310/fpga_XEM7310.srcs/sources_1/ip/fifo_ADS8686/fifo_ADS8686.dcp
 } _RESULT ] } { 
-  send_msg_id runtcl-3 error "ERROR: Unable to successfully create or copy the sub-design checkpoint file."
+  send_msg_id runtcl-3 status "ERROR: Unable to successfully create or copy the sub-design checkpoint file."
   error "ERROR: Unable to successfully create or copy the sub-design checkpoint file."
 }
 
 if { [catch {
-  file rename -force C:/Users/delg5279/covg_fpga_project/covg_fpga/fpga_XEM7310/fpga_XEM7310.runs/fifo_ADS8686_synth_1/fifo_ADS8686_stub.v C:/Users/delg5279/covg_fpga_project/covg_fpga/fpga_XEM7310/fpga_XEM7310.srcs/sources_1/ip/fifo_ADS8686/fifo_ADS8686_stub.v
+  file rename -force C:/Users/lopr5624/orserstim/fpga_XEM7310/fpga_XEM7310.runs/fifo_ADS8686_synth_1/fifo_ADS8686_stub.v c:/Users/lopr5624/orserstim/fpga_XEM7310/fpga_XEM7310.srcs/sources_1/ip/fifo_ADS8686/fifo_ADS8686_stub.v
 } _RESULT ] } { 
   puts "CRITICAL WARNING: Unable to successfully create a Verilog synthesis stub for the sub-design. This may lead to errors in top level synthesis of the design. Error reported: $_RESULT"
 }
 
 if { [catch {
-  file rename -force C:/Users/delg5279/covg_fpga_project/covg_fpga/fpga_XEM7310/fpga_XEM7310.runs/fifo_ADS8686_synth_1/fifo_ADS8686_stub.vhdl C:/Users/delg5279/covg_fpga_project/covg_fpga/fpga_XEM7310/fpga_XEM7310.srcs/sources_1/ip/fifo_ADS8686/fifo_ADS8686_stub.vhdl
+  file rename -force C:/Users/lopr5624/orserstim/fpga_XEM7310/fpga_XEM7310.runs/fifo_ADS8686_synth_1/fifo_ADS8686_stub.vhdl c:/Users/lopr5624/orserstim/fpga_XEM7310/fpga_XEM7310.srcs/sources_1/ip/fifo_ADS8686/fifo_ADS8686_stub.vhdl
 } _RESULT ] } { 
   puts "CRITICAL WARNING: Unable to successfully create a VHDL synthesis stub for the sub-design. This may lead to errors in top level synthesis of the design. Error reported: $_RESULT"
 }
 
 if { [catch {
-  file rename -force C:/Users/delg5279/covg_fpga_project/covg_fpga/fpga_XEM7310/fpga_XEM7310.runs/fifo_ADS8686_synth_1/fifo_ADS8686_sim_netlist.v C:/Users/delg5279/covg_fpga_project/covg_fpga/fpga_XEM7310/fpga_XEM7310.srcs/sources_1/ip/fifo_ADS8686/fifo_ADS8686_sim_netlist.v
+  file rename -force C:/Users/lopr5624/orserstim/fpga_XEM7310/fpga_XEM7310.runs/fifo_ADS8686_synth_1/fifo_ADS8686_sim_netlist.v c:/Users/lopr5624/orserstim/fpga_XEM7310/fpga_XEM7310.srcs/sources_1/ip/fifo_ADS8686/fifo_ADS8686_sim_netlist.v
 } _RESULT ] } { 
   puts "CRITICAL WARNING: Unable to successfully create the Verilog functional simulation sub-design file. Post-Synthesis Functional Simulation with this file may not be possible or may give incorrect results. Error reported: $_RESULT"
 }
 
 if { [catch {
-  file rename -force C:/Users/delg5279/covg_fpga_project/covg_fpga/fpga_XEM7310/fpga_XEM7310.runs/fifo_ADS8686_synth_1/fifo_ADS8686_sim_netlist.vhdl C:/Users/delg5279/covg_fpga_project/covg_fpga/fpga_XEM7310/fpga_XEM7310.srcs/sources_1/ip/fifo_ADS8686/fifo_ADS8686_sim_netlist.vhdl
+  file rename -force C:/Users/lopr5624/orserstim/fpga_XEM7310/fpga_XEM7310.runs/fifo_ADS8686_synth_1/fifo_ADS8686_sim_netlist.vhdl c:/Users/lopr5624/orserstim/fpga_XEM7310/fpga_XEM7310.srcs/sources_1/ip/fifo_ADS8686/fifo_ADS8686_sim_netlist.vhdl
 } _RESULT ] } { 
   puts "CRITICAL WARNING: Unable to successfully create the VHDL functional simulation sub-design file. Post-Synthesis Functional Simulation with this file may not be possible or may give incorrect results. Error reported: $_RESULT"
 }
 
-}; # end if cached_ip 
+}; # end if cacheID 
 
-if {[file isdir C:/Users/delg5279/covg_fpga_project/covg_fpga/fpga_XEM7310/fpga_XEM7310.ip_user_files/ip/fifo_ADS8686]} {
+if {[file isdir C:/Users/lopr5624/orserstim/fpga_XEM7310/fpga_XEM7310.ip_user_files/ip/fifo_ADS8686]} {
   catch { 
-    file copy -force C:/Users/delg5279/covg_fpga_project/covg_fpga/fpga_XEM7310/fpga_XEM7310.srcs/sources_1/ip/fifo_ADS8686/fifo_ADS8686_stub.v C:/Users/delg5279/covg_fpga_project/covg_fpga/fpga_XEM7310/fpga_XEM7310.ip_user_files/ip/fifo_ADS8686
+    file copy -force c:/Users/lopr5624/orserstim/fpga_XEM7310/fpga_XEM7310.srcs/sources_1/ip/fifo_ADS8686/fifo_ADS8686_stub.v C:/Users/lopr5624/orserstim/fpga_XEM7310/fpga_XEM7310.ip_user_files/ip/fifo_ADS8686
   }
 }
 
-if {[file isdir C:/Users/delg5279/covg_fpga_project/covg_fpga/fpga_XEM7310/fpga_XEM7310.ip_user_files/ip/fifo_ADS8686]} {
+if {[file isdir C:/Users/lopr5624/orserstim/fpga_XEM7310/fpga_XEM7310.ip_user_files/ip/fifo_ADS8686]} {
   catch { 
-    file copy -force C:/Users/delg5279/covg_fpga_project/covg_fpga/fpga_XEM7310/fpga_XEM7310.srcs/sources_1/ip/fifo_ADS8686/fifo_ADS8686_stub.vhdl C:/Users/delg5279/covg_fpga_project/covg_fpga/fpga_XEM7310/fpga_XEM7310.ip_user_files/ip/fifo_ADS8686
+    file copy -force c:/Users/lopr5624/orserstim/fpga_XEM7310/fpga_XEM7310.srcs/sources_1/ip/fifo_ADS8686/fifo_ADS8686_stub.vhdl C:/Users/lopr5624/orserstim/fpga_XEM7310/fpga_XEM7310.ip_user_files/ip/fifo_ADS8686
   }
 }
 file delete __synthesis_is_running__
 close [open __synthesis_is_complete__ w]
+OPTRACE "fifo_ADS8686_synth_1" END { }

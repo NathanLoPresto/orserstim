@@ -526,8 +526,11 @@ set_property IOSTANDARD LVCMOS33 [get_ports {ds_sdi[1]}]
 set_property PACKAGE_PIN G3 [get_ports {d_csb[1]}]
 set_property IOSTANDARD LVCMOS33 [get_ports {d_csb[1]}]
 ## MC2-48
-set_property PACKAGE_PIN G2 [get_ports {en_5v}]
-set_property IOSTANDARD LVCMOS33 [get_ports {en_5v}]
+#Orser stim specific
+#set_property PACKAGE_PIN G2 [get_ports {en_5v}]
+#set_property IOSTANDARD LVCMOS33 [get_ports {en_5v}]
+set_property PACKAGE_PIN G2 [get_ports {d_sdo_io}]
+set_property IOSTANDARD LVCMOS33 [get_ports {d_sdo_io}]
 ## MC2-49
 set_property PACKAGE_PIN E2 [get_ports {d_sdi[1]}]
 set_property IOSTANDARD LVCMOS33 [get_ports {d_sdi[1]}]
@@ -651,6 +654,7 @@ set_property PACKAGE_PIN B17 [get_ports {led[7]}]
 set_property IOSTANDARD LVCMOS15 [get_ports {led[*]}]
 
 # Flash ####################################################################
+
 # set_property PACKAGE_PIN AA9 [get_ports {spi_dq0}]
 # set_property PACKAGE_PIN V10 [get_ports {spi_c}]
 # set_property PACKAGE_PIN W10 [get_ports {spi_s}]
