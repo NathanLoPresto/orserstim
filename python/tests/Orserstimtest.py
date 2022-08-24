@@ -86,18 +86,62 @@ gpio.ads_misc("sdoa")  # do not care for this experiment
 
 # fast DAC channel 0 and 1
 for i in [0]:
-    daq.DAC[i].set_ctrl_reg(daq.DAC[i].master_config)
-    daq.DAC[i].set_spi_sclk_divide()
+
+    daq.DAC[i].set_ctrl_reg(0x3020)
+    #daq.DAC[i].set_spi_sclk_divide(10)
+
     #daq.DAC[i].filter_select(operation="set")
     daq.DAC[i].filter_select(operation="clear")
 
     #test value
-    daq.DAC[i].write(int(0x11223344))
+    for x in range(300):
+        #daq.DAC[i].set_ctrl_reg(0x3020)
+        daq.DAC[i].write(int(0x11223344))
 
     #daq.DAC[i].set_data_mux("DDR")
     daq.DAC[i].set_data_mux("host")
 
+'''
+#This might need to be changed 
+clamp_num =0
+cmd_ch = clamp_num *2 +1
+cc_ch = clamp_num *2
+
+cmd_signal = [0x11223344]
+cc_signal =  [0x11223344]
+
+daq.ddr.data_arrays[cmd_ch] = [cmd_signal]
+daq.ddr.data_arrays[cc_ch] = [cc_signal]
+
+daq.DAC[cmd_ch].write(int(daq.ddr.data_arrays[cmd_ch][0]) & 0x3FFF)    # Write first output code from host to make smooth transition
+daq.DAC[cc_ch].write(int(daq.ddr.data_arrays[cc_ch][0]) & 0x3FFF)  
+
+
+daq.ddr.write_setup()
+block_pipe_return, speed_MBs = daq.ddr.write_channels(set_ddr_read=False)
+# self.daq.DAC[cmd_ch].write(int(self.daq.ddr.data_arrays[cmd_ch][0]) & 0x3FFF)    # Write first output code from host to make smooth transition
+# self.daq.DAC[cc_ch].write(int(self.daq.ddr.data_arrays[cc_ch][0]) & 0x3FFF)    # Write first output code from host to make smooth transition
+daq.ddr.reset_mig_interface()
+daq.ddr.reset_fifo('ALL')
+# self.daq.ddr.write_finish()
+# DEBUG
+bits = [daq.ddr.endpoints['ADC_WRITE_ENABLE'].bit_index_low,
+        daq.ddr.endpoints['DAC_READ_ENABLE'].bit_index_low]
+daq.ddr.fpga.set_ep_simultaneous(daq.ddr.endpoints['ADC_WRITE_ENABLE'].address, bits, [1, 1])
+for i in range(6):
+    daq.DAC[i].set_data_mux("DDR")
+'''
+#write to ddr
+#change to ddr
+#start transfer 
+#daq.ddr....
+#lines 565 to 577
+
+
+
 # daq.DAC[0].set_clk_divider(divide_value=0x50) #TODO: this is no longer used. All timing is from one module
+
+'''
 
 ddr = DDR3(f, data_version='TIMESTAMPS')
 
@@ -159,3 +203,4 @@ for dac_ch in [0]:
     ax.legend()
     ax.set_title('Fast DAC data')
     ax.set_xlabel('s [us]')
+'''

@@ -803,7 +803,7 @@ module top_level_module(
     reg [127:0] adc_ddr_data;
     reg adc_ddr_wr_en;
     
-    wire [23:0] dac_val_out[0:(AD5453_NUM-1)]; //for AD5453 data 
+    wire [31:0] dac_val_out[0:(AD5453_NUM-1)]; //for AD5453 data 
     wire dac_val_out_ready[0:(AD5453_NUM-1)]; //for AD5453 data 
 
     always @(*) begin 
@@ -905,25 +905,25 @@ module top_level_module(
         okWireIn wi_ddr_spi (.okHE(okHE), .ep_addr(`DAC80508_HOST_WIRE_IN_GEN_ADDR + k), .ep_dataout(ds_host_spi_data[k]));
         assign spi_host_trigger_ds[k] = ep41trig[`DAC80508_HOST_TRIG_GEN_BIT + k];
         
-        mux8to1_32wide spi_mux_bus( // lower 24 bits are data, most-significant bit is the data_ready signal 
-            .datain_0({ddr_data_valid, 11'b0, 1'b1, po0_ep_datain[ (k*2*16 + 14) +:2], po0_ep_datain[((k*2 + 1)*16 + 14) +:1], po0_ep_datain[(AD5453_NUM*16 + k*16) +:16]}),
+        mux8to1_33wide spi_mux_bus( // lower 24 bits are data, most-significant bit is the data_ready signal 
+            .datain_0({ddr_data_valid, 12'b0, 1'b1, po0_ep_datain[ (k*2*16 + 14) +:2], po0_ep_datain[((k*2 + 1)*16 + 14) +:1], po0_ep_datain[(AD5453_NUM*16 + k*16) +:16]}),
             //                            [15:14] for k=0                 [30:30] for k =0        ,              [111:96] for k  = 0
             // Leading 1 to complete OUT channel address on chip (for DAC0 - DAC7 always 1),
             // last 2 bits of an AD5453 16-bit group for addressing,
             // 15th bit of the next AD5453 group to complete the address,
             // 16 bits data from DAC80508 group
-            .datain_1({spi_host_trigger_ds[k], 7'b0, ds_host_spi_data[k][31:0]}), // TODO: determine size for this, I believe it should be 24 bits of SPI message that the host must determine because the spi_fifo_driven is expecting 24 bits
-            .datain_2({ads_data_valid, 11'b0, 1'b1, ds_host_spi_data[k][2:0], ads_data_out[15:0]}),  // data from ADS8686
-            .datain_3({ads_data_valid, 11'b0, 1'b1, ds_host_spi_data[k][2:0], ads_data_out[31:16]}), // Default to output channel DAC0
-            .datain_4({adc_valid_pulse[0], 11'b0, 1'b1, ds_host_spi_data[k][2:0], adc_val_reg[0][15:0]}), // data from AD7961, channel is selected by input wire 
-            .datain_5({adc_valid_pulse[1], 11'b0, 1'b1, ds_host_spi_data[k][2:0], adc_val_reg[1][15:0]}), // data from AD7961, channel is selected by input wire 
-            .datain_6({adc_valid_pulse[2], 11'b0, 1'b1, ds_host_spi_data[k][2:0], adc_val_reg[2][15:0]}), // data from AD7961, channel is selected by input wire 
-            .datain_7({adc_valid_pulse[3], 11'b0, 1'b1, ds_host_spi_data[k][2:0], adc_val_reg[3][15:0]}), // data from AD7961, channel is selected by input wire 
+            .datain_1({spi_host_trigger_ds[k], ds_host_spi_data[k][31:0]}), // TODO: determine size for this, I believe it should be 24 bits of SPI message that the host must determine because the spi_fifo_driven is expecting 24 bits
+            .datain_2({ads_data_valid, 12'b0, 1'b1, ds_host_spi_data[k][2:0], ads_data_out[15:0]}),  // data from ADS8686
+            .datain_3({ads_data_valid, 12'b0, 1'b1, ds_host_spi_data[k][2:0], ads_data_out[31:16]}), // Default to output channel DAC0
+            .datain_4({adc_valid_pulse[0], 12'b0, 1'b1, ds_host_spi_data[k][2:0], adc_val_reg[0][15:0]}), // data from AD7961, channel is selected by input wire 
+            .datain_5({adc_valid_pulse[1], 12'b0, 1'b1, ds_host_spi_data[k][2:0], adc_val_reg[1][15:0]}), // data from AD7961, channel is selected by input wire 
+            .datain_6({adc_valid_pulse[2], 12'b0, 1'b1, ds_host_spi_data[k][2:0], adc_val_reg[2][15:0]}), // data from AD7961, channel is selected by input wire 
+            .datain_7({adc_valid_pulse[3], 12'b0, 1'b1, ds_host_spi_data[k][2:0], adc_val_reg[3][15:0]}), // data from AD7961, channel is selected by input wire 
             .sel(ep03wire[(`DAC80508_DATA_SEL_GEN_BIT + k*`DAC80508_DATA_SEL_GEN_BIT_LEN) +: `DAC80508_DATA_SEL_GEN_BIT_LEN]),
             .dataout({ds_spi_data[k]})
         );
         
-        assign data_ready_ds[k] = ds_spi_data[k][31];
+        assign data_ready_ds[k] = ds_spi_data[k][32];
             
         spi_fifo_driven #(.ADDR(`DAC80508_REGBRIDGE_OFFSET_GEN_ADDR + k*20))spi_fifo1 (
                  .clk(clk_sys), .fifoclk(okClk), .rst(sys_rst),
@@ -955,8 +955,8 @@ module top_level_module(
     wire [(AD5453_NUM-1):0] data_ready_fast_dac;
     wire [(AD5453_NUM-1):0] filter_data_ready_fast_dac;
    
-    wire [31:0] spi_data[0:(AD5453_NUM-1)];
-    wire [31:0] filter_spi_data[0:(AD5453_NUM-1)];
+    wire [32:0] spi_data[0:(AD5453_NUM-1)];
+    wire [32:0] filter_spi_data[0:(AD5453_NUM-1)];
     wire [31:0] host_spi_data[0:(AD5453_NUM-1)];
     wire [(AD5453_NUM-1):0] spi_host_trigger_fast_dac; 
     
@@ -989,35 +989,35 @@ module top_level_module(
             else ddr_data_valid_norepeat[p] <= ddr_data_valid;
         end
                 
-        mux8to1_32wide spi_mux_bus_fast_dac( // lower 24 bits are data, most-significant bit (bit 31) is the data_ready signal 
+        mux8to1_33wide spi_mux_bus_fast_dac( // lower 24 bits are data, most-significant bit (bit 31) is the data_ready signal 
             .datain_0({ddr_data_valid, po0_ep_datain[(p*0) +:32]}),
-            .datain_1({spi_host_trigger_fast_dac[p], 7'b0, host_spi_data[p][31:0]}), 
-            .datain_2({ads_data_valid, 15'b0, ads_data_out[15:0]}), // 
-            .datain_3({ddr_data_valid_norepeat[p], 17'b0, last_ddr_read[p]}), // 
-            .datain_4({write_en_adc_o[0], 15'b0, adc_val[0][15:0]}), // data from AD7961  
-            .datain_5({write_en_adc_o[1], 15'b0, adc_val[1][15:0]}), // data from AD7961
-            .datain_6({write_en_adc_o[2], 15'b0, adc_val[2][15:0]}), // data from AD7961
-            .datain_7({write_en_adc_o[3], 15'b0, adc_val[3][15:0]}), // data from AD7961
+            .datain_1({spi_host_trigger_fast_dac[p], host_spi_data[p][31:0]}), 
+            .datain_2({ads_data_valid, 16'b0, ads_data_out[15:0]}), // 
+            .datain_3({ddr_data_valid_norepeat[p], 18'b0, last_ddr_read[p]}), // 
+            .datain_4({write_en_adc_o[0], 16'b0, adc_val[0][15:0]}), // data from AD7961  
+            .datain_5({write_en_adc_o[1], 16'b0, adc_val[1][15:0]}), // data from AD7961
+            .datain_6({write_en_adc_o[2], 16'b0, adc_val[2][15:0]}), // data from AD7961
+            .datain_7({write_en_adc_o[3], 16'b0, adc_val[3][15:0]}), // data from AD7961
             .sel(ep03wire[(`AD5453_DATA_SEL_GEN_BIT + p*`AD5453_DATA_SEL_GEN_BIT_LEN) +: `AD5453_DATA_SEL_GEN_BIT_LEN]),
             .dataout({spi_data[p]})
         );
         
-        assign data_ready_fast_dac[p] = spi_data[p][31]; // assign MUX output MSB to the data_ready signal. 
+        assign data_ready_fast_dac[p] = spi_data[p][32]; // assign MUX output MSB to the data_ready signal. 
         
-        mux8to1_32wide filter_spi_mux_bus_fast_dac( // lower 24 bits are data, most-significant bit (bit 31) is the data_ready signal 
+        mux8to1_33wide filter_spi_mux_bus_fast_dac( // lower 24 bits are data, most-significant bit (bit 31) is the data_ready signal 
             .datain_0({ddr_data_valid, po0_ep_datain[(p*0) +:32]}),
-            .datain_1({spi_host_trigger_fast_dac[p], 7'b0, host_spi_data[p][31:0]}), 
-            .datain_2({ads_data_valid, 15'b0, ads_data_out[15:0]}), // 
-            .datain_3({ddr_data_valid_norepeat[p], 17'b0, last_ddr_read[p]}), // 
-            .datain_4({write_en_adc_o[0], 15'b0, adc_val[0][15:0]}), // data from AD7961  
-            .datain_5({write_en_adc_o[1], 15'b0, adc_val[1][15:0]}), // data from AD7961
-            .datain_6({write_en_adc_o[2], 15'b0, adc_val[2][15:0]}), // data from AD7961
-            .datain_7({write_en_adc_o[3], 15'b0, adc_val[3][15:0]}), // data from AD7961
+            .datain_1({spi_host_trigger_fast_dac[p], host_spi_data[p][31:0]}), 
+            .datain_2({ads_data_valid, 16'b0, ads_data_out[15:0]}), // 
+            .datain_3({ddr_data_valid_norepeat[p], 18'b0, last_ddr_read[p]}), // 
+            .datain_4({write_en_adc_o[0], 16'b0, adc_val[0][15:0]}), // data from AD7961  
+            .datain_5({write_en_adc_o[1], 16'b0, adc_val[1][15:0]}), // data from AD7961
+            .datain_6({write_en_adc_o[2], 16'b0, adc_val[2][15:0]}), // data from AD7961
+            .datain_7({write_en_adc_o[3], 16'b0, adc_val[3][15:0]}), // data from AD7961
             .sel(ep_wire_filtdata[(`AD5453_FILTER_DATA_SEL_GEN_BIT + p*`AD5453_FILTER_DATA_SEL_GEN_BIT_LEN) +: `AD5453_FILTER_DATA_SEL_GEN_BIT_LEN]),
             .dataout({filter_spi_data[p]})
         );
         
-        assign filter_data_ready_fast_dac[p] = filter_spi_data[p][31]; // assign MUX output MSB to the data_ready signal. 
+        assign filter_data_ready_fast_dac[p] = filter_spi_data[p][32]; // assign MUX output MSB to the data_ready signal. 
             
         spi_fifo_driven #(.ADDR(`AD5453_REGBRIDGE_OFFSET_GEN_ADDR + p*20))spi_fifo0 (
                  .clk(clk_sys), .fifoclk(okClk), .rst(sys_rst),

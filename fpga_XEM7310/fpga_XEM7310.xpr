@@ -442,6 +442,13 @@
           <Attr Name="ScopedToCell" Val="ddr3_256_32"/>
         </FileInfo>
       </File>
+      <File Path="$PSRCDIR/sources_1/mux8to1_33wide.v">
+        <FileInfo>
+          <Attr Name="UsedIn" Val="synthesis"/>
+          <Attr Name="UsedIn" Val="implementation"/>
+          <Attr Name="UsedIn" Val="simulation"/>
+        </FileInfo>
+      </File>
       <Config>
         <Option Name="DesignMode" Val="RTL"/>
         <Option Name="TopModule" Val="top_level_module"/>
