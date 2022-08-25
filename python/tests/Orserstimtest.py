@@ -1,31 +1,28 @@
 """
-This code demonstrates DDR reading and writing. 
-Works in a mode with two DDR input buffers and two DDR output buffers. 
-Data loaded into DDR for playback (port 1):
-* AD5453 DAC and DAC80508 
-Data buffered into and then read from DDR (port 2):
- * AD7961 @ 5 MSPS
- * output data to DAC AD5453 (allows for filter tests) @ 2.5 MSPS
- * ADS8686 data @ 1 MSPS
- * Timestamp (clock at 200 MHz)
+This code runs through host driven SPI
+and DDR/FIFO driven SPI using the 
+pyripherals python package and XEM7310
 Abe Stroschein, ajstroschein@stthomas.edu
 Lucas Koerner, koerner.lucas@stthomas.edu
+Nathan LoPresto, lopr5624@stthomas.edu
 """
 
-import os
-import sys
-import logging
-from pyripherals.core import FPGA, Endpoint
+#Read "install" section in covg_fpga for pyripherals install directions
 from pyripherals.peripherals.DDR3 import DDR3
+from pyripherals.core import FPGA, Endpoint
 from pyripherals.utils import from_voltage
-from time import sleep
-import datetime
-import time
-import atexit
-import numpy as np
-import matplotlib.pyplot as plt
-import pandas as pd
 
+#"pip install" imports
+from ctypes import sizeof
+from time import sleep
+import pandas as pd
+import numpy as np
+import datetime
+import logging
+import atexit
+import time
+import sys
+import os
 
 # The boards.py file is located in the covg_fpga folder so we need to find that folder. If it is not above the current directory, the program fails.
 covg_fpga_path = os.getcwd()
@@ -38,19 +35,18 @@ for i in range(15):
         covg_fpga_path = os.path.dirname(covg_fpga_path)
 sys.path.append(boards_path)
 
-
+#local imports
 from boards import Daq, Clamp
 from analysis.adc_data import read_h5
 from analysis.utils import calc_fft
-
 
 # constants 
 FS = 5e6  # sampling frequency 
 dac80508_offset = 0x8000
 
-
 eps = Endpoint.endpoints_from_defines
 
+#Directory only configured for windows
 data_dir_base = covg_fpga_path
 if sys.platform == "linux" or sys.platform == "linux2":
     print('Linux directory not configured... Error')
@@ -75,6 +71,7 @@ f.init_device()
 sleep(2)
 f.send_trig(eps["GP"]["SYSTEM_RESET"])  # system reset
 
+#Initialize a daq object, containing DAC, DDR etc. objects
 daq = Daq(f)
 
 gpio = Daq.GPIO(f)
@@ -83,44 +80,37 @@ gpio.fpga.debug = True
 gpio.spi_debug("dfast1")
 gpio.ads_misc("sdoa")  # do not care for this experiment
 
+# changing the length of trasnfer to 32-bit
+daq.DAC[0].set_ctrl_reg(0x3020)
+daq.DAC[0].filter_select(operation="clear")
 
-# fast DAC channel 0 and 1
-for i in [0]:
+#Host-driven writes
+for x in range(20):
+    daq.DAC[0].write(int(0x11223344))
 
-    daq.DAC[i].set_ctrl_reg(0x3020)
-    #daq.DAC[i].set_spi_sclk_divide(10)
+daq.DAC[0].set_data_mux("host")
 
-    #daq.DAC[i].filter_select(operation="set")
-    daq.DAC[i].filter_select(operation="clear")
-
-    #test value
-    for x in range(300):
-        #daq.DAC[i].set_ctrl_reg(0x3020)
-        daq.DAC[i].write(int(0x11223344))
-
-    #daq.DAC[i].set_data_mux("DDR")
-    daq.DAC[i].set_data_mux("host")
-
-'''
-#This might need to be changed 
+#These were needed for old DDR write
+#TODO: Addd relevant spi commands into command block
 clamp_num =0
 cmd_ch = clamp_num *2 +1
 cc_ch = clamp_num *2
+dac_offset = 0x1e00
+offset_adjust_k = 1 + 2.1/3
+sequence_data = 5 * 1e-3
+cmd_voltage = sequence_data * offset_adjust_k * 10
 
-cmd_signal = [0x11223344]
-cc_signal =  [0x11223344]
+#Instance variable of ddr, set with cmd and cc signals
+cmd_signal = 212
+cc_signal = np.ones(4194304, dtype=np.uint16) * dac_offset
 
-daq.ddr.data_arrays[cmd_ch] = [cmd_signal]
-daq.ddr.data_arrays[cc_ch] = [cc_signal]
-
-daq.DAC[cmd_ch].write(int(daq.ddr.data_arrays[cmd_ch][0]) & 0x3FFF)    # Write first output code from host to make smooth transition
-daq.DAC[cc_ch].write(int(daq.ddr.data_arrays[cc_ch][0]) & 0x3FFF)  
-
+#Signals loaded into daq.ddr object 
+daq.ddr.data_arrays[cmd_ch] = cmd_signal
+daq.ddr.data_arrays[cc_ch] = cc_signal
 
 daq.ddr.write_setup()
 block_pipe_return, speed_MBs = daq.ddr.write_channels(set_ddr_read=False)
-# self.daq.DAC[cmd_ch].write(int(self.daq.ddr.data_arrays[cmd_ch][0]) & 0x3FFF)    # Write first output code from host to make smooth transition
-# self.daq.DAC[cc_ch].write(int(self.daq.ddr.data_arrays[cc_ch][0]) & 0x3FFF)    # Write first output code from host to make smooth transition
+
 daq.ddr.reset_mig_interface()
 daq.ddr.reset_fifo('ALL')
 # self.daq.ddr.write_finish()
@@ -130,77 +120,3 @@ bits = [daq.ddr.endpoints['ADC_WRITE_ENABLE'].bit_index_low,
 daq.ddr.fpga.set_ep_simultaneous(daq.ddr.endpoints['ADC_WRITE_ENABLE'].address, bits, [1, 1])
 for i in range(6):
     daq.DAC[i].set_data_mux("DDR")
-'''
-#write to ddr
-#change to ddr
-#start transfer 
-#daq.ddr....
-#lines 565 to 577
-
-
-
-# daq.DAC[0].set_clk_divider(divide_value=0x50) #TODO: this is no longer used. All timing is from one module
-
-'''
-
-ddr = DDR3(f, data_version='TIMESTAMPS')
-
-FAST_DAC_FREQ = 7e3
-for i in range(7):
-    ddr.data_arrays[i], fdac_freq = ddr.make_sine_wave(0x800, FAST_DAC_FREQ,
-                                        offset=0x1000)
-
-
-ddr.write_setup()
-block_pipe_return, speed_MBs = ddr.write_channels(set_ddr_read=False)
-ddr.reset_mig_interface()
-ddr.write_finish()
-
-REPEAT = False
-if REPEAT:  # to repeat data capture without rewriting the DAC data
-    ddr.clear_adc_read()
-    ddr.clear_adc_write()
-    ddr.clear_dac_write()
-
-    ddr.reset_fifo(name='ALL')
-    # ddr.reset_fifo(name='ADC_TRANSFER')
-    ddr.reset_mig_interface()
-
-    ddr.write_finish()
-    time.sleep(0.01)
-
-file_name = "test"
-idx =0
-
-# saves data to a file; returns to teh workspace the deswizzled DDR data of the last repeat
-chan_data_one_repeat = ddr.save_data(data_dir, file_name.format(idx) + '.h5', num_repeats = 8,
-                          blk_multiples=40) # blk multiples multiple of 10
-
-# to get the deswizzled data of all repeats need to read the file
-_, chan_data = read_h5(data_dir, file_name=file_name.format(idx) + '.h5', chan_list=np.arange(8))
-
-# Long data sequence -- entire file 
-adc_data, timestamp, dac_data, ads, ads_seq_cnt, read_errors = ddr.data_to_names(
-    chan_data)
-
-# Shorter data sequence, just one of the repeats
-# adc_data, timestamp, dac_data, ads, ads_seq_cnt, read_errors = ddr.data_to_names(chan_data_one_repeat)
-
-t = np.arange(0,len(adc_data[0]))*1/FS
-
-crop_start = 0 # placeholder in case the first bits of DDR data are unrealiable. Doesn't seem to be the case.
-print(f'Timestamp spans {5e-9*(timestamp[-1] - timestamp[0])*1000} [ms]')
-
-# DACs 
-t_dacs = t[crop_start::2]  # fast DACs are saved every other 5 MSPS tick
-#for dac_ch in range(4):
-for dac_ch in [0]:
-    fig,ax=plt.subplots()
-    y = dac_data[dac_ch][crop_start:]
-    lbl = f'Ch{dac_ch}'
-    ax.plot(t_dacs*1e6, y, marker = '+', label = lbl)
-    print(f'Min {np.min(y[2:])}, Max {np.max(y)}') # skip the first 2 readings which are 0
-    ax.legend()
-    ax.set_title('Fast DAC data')
-    ax.set_xlabel('s [us]')
-'''
