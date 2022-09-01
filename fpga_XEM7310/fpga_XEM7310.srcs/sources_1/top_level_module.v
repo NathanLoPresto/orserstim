@@ -76,8 +76,8 @@ module top_level_module(
     output wire [(AD5453_NUM-1):0]d_sclk,
     output wire [(AD5453_NUM-1):0]d_csb,
     output wire [(AD5453_NUM-1):0]d_sdi,
+    //miso results wire added
     input wire d_sdo_io,
-    //input wire  [(AD5453_NUM-1):0]d_sdo,
 
     //ADS8686
     output wire ads_csb,
@@ -803,9 +803,11 @@ module top_level_module(
     reg [127:0] adc_ddr_data;
     reg adc_ddr_wr_en;
     
+    //Data width change to 32-bit MISO responses
     wire [31:0] dac_val_out[0:(AD5453_NUM-1)]; //for AD5453 data 
     wire dac_val_out_ready[0:(AD5453_NUM-1)]; //for AD5453 data 
 
+    //Intan results added into adc_ddr_data
     always @(*) begin 
         if (ep03wire[`DDR3_ADC_DEBUG] == 1'b0) begin 
             case (cycle_cnt)
@@ -905,6 +907,7 @@ module top_level_module(
         okWireIn wi_ddr_spi (.okHE(okHE), .ep_addr(`DAC80508_HOST_WIRE_IN_GEN_ADDR + k), .ep_dataout(ds_host_spi_data[k]));
         assign spi_host_trigger_ds[k] = ep41trig[`DAC80508_HOST_TRIG_GEN_BIT + k];
         
+        //Size of mux changed to 33 wide, to allow for 32 bits of data and the data valid bit 
         mux8to1_33wide spi_mux_bus( // lower 24 bits are data, most-significant bit is the data_ready signal 
             .datain_0({ddr_data_valid, 12'b0, 1'b1, po0_ep_datain[ (k*2*16 + 14) +:2], po0_ep_datain[((k*2 + 1)*16 + 14) +:1], po0_ep_datain[(AD5453_NUM*16 + k*16) +:16]}),
             //                            [15:14] for k=0                 [30:30] for k =0        ,              [111:96] for k  = 0
@@ -923,6 +926,7 @@ module top_level_module(
             .dataout({ds_spi_data[k]})
         );
         
+        //data valid bit changed to bit 33
         assign data_ready_ds[k] = ds_spi_data[k][32];
             
         spi_fifo_driven #(.ADDR(`DAC80508_REGBRIDGE_OFFSET_GEN_ADDR + k*20))spi_fifo1 (
@@ -935,6 +939,7 @@ module top_level_module(
                  .ep_address(regAddress),       //input wire [31:0] 
                  .ep_dataout_coeff(regDataOut), //input wire [31:0] (TODO: name is confusing}. Output from OKRegisterBridge
                  
+                 //Miso results and corresponding data valid bit added
                  .data_valid(),
                  .intan_out(),
 
@@ -955,12 +960,13 @@ module top_level_module(
     wire [(AD5453_NUM-1):0] data_ready_fast_dac;
     wire [(AD5453_NUM-1):0] filter_data_ready_fast_dac;
    
+   //spi data and filter data both extended to 33 bits
     wire [32:0] spi_data[0:(AD5453_NUM-1)];
     wire [32:0] filter_spi_data[0:(AD5453_NUM-1)];
     wire [31:0] host_spi_data[0:(AD5453_NUM-1)];
     wire [(AD5453_NUM-1):0] spi_host_trigger_fast_dac; 
     
-    
+    //Extended to 32 bits of Miso result data
     wire [31:0] intan_results[0:(AD5453_NUM-1)];
     wire fifo_data_valid[0:(AD5453_NUM-1)];
 
@@ -989,6 +995,7 @@ module top_level_module(
             else ddr_data_valid_norepeat[p] <= ddr_data_valid;
         end
                 
+        //Mux extended to 32 bits to hold 32 bits of data and data valid bit 
         mux8to1_33wide spi_mux_bus_fast_dac( // lower 24 bits are data, most-significant bit (bit 31) is the data_ready signal 
             .datain_0({ddr_data_valid, po0_ep_datain[(p*0) +:32]}),
             .datain_1({spi_host_trigger_fast_dac[p], host_spi_data[p][31:0]}), 
@@ -1002,8 +1009,10 @@ module top_level_module(
             .dataout({spi_data[p]})
         );
         
+        //data ready from the fast dac held in the 33rd bit of the return data
         assign data_ready_fast_dac[p] = spi_data[p][32]; // assign MUX output MSB to the data_ready signal. 
         
+        //Mux extended to 33 bits to hold 32 bits of Miso results and data valid bit 
         mux8to1_33wide filter_spi_mux_bus_fast_dac( // lower 24 bits are data, most-significant bit (bit 31) is the data_ready signal 
             .datain_0({ddr_data_valid, po0_ep_datain[(p*0) +:32]}),
             .datain_1({spi_host_trigger_fast_dac[p], host_spi_data[p][31:0]}), 
@@ -1017,6 +1026,7 @@ module top_level_module(
             .dataout({filter_spi_data[p]})
         );
         
+        //Data ready from the filter held in the 33rd bit of the return data
         assign filter_data_ready_fast_dac[p] = filter_spi_data[p][32]; // assign MUX output MSB to the data_ready signal. 
             
         spi_fifo_driven #(.ADDR(`AD5453_REGBRIDGE_OFFSET_GEN_ADDR + p*20))spi_fifo0 (
@@ -1029,6 +1039,7 @@ module top_level_module(
                  .ep_address(regAddress),       //input wire [31:0] 
                  .ep_dataout_coeff(regDataOut), //input wire [31:0] (TODO: name is confusing}. Output from OKRegisterBridge
                  
+                 //Intan results and corresponding data_valid signal added to spi_fifo_driven
                  .data_valid(fifo_data_valid[p]),
                  .intan_out(intan_results[p]),
                  

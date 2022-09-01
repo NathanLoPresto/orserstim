@@ -37,10 +37,11 @@ module spi_fifo_driven #(parameter ADDR = 0) (
      input wire [31:0] ep_address,
      input wire [31:0] ep_dataout_coeff,
      
+     //data is valid coming in from intan
      output wire data_valid,
+     //32-bit Miso signal from the intan chip
      output wire [31:0] intan_out,
      
-     //output wire [31:0] ep_datain,
      output wire rd_en_0,
      input wire regTrigger,
      input wire filter_sel,  // if high SPI data is from the filter. 
@@ -198,10 +199,12 @@ module spi_fifo_driven #(parameter ADDR = 0) (
     .i_wb_ack(ack_0), .i_wb_stall(1'b0), .i_wb_err(err_0), .i_wb_data(dat_i_0)
     );
     
+    //Data valid bit on 33rd bit of wb_cmd_dataout
     assign intan_out = wb_cmd_dataout_0[31:0];
     assign data_valid = (!wb_cmd_dataout_0[32] && !wb_cmd_dataout_0[33] && !rsp_stb_0);
     
     //SPI master core for AD796x and AD5453
+    //Miso results brought up to top level
     spi_top i_spi_top_0 (
       .wb_clk_i(clk), .wb_rst_i(rst), 
       .wb_adr_i(adr_0[4:0]), .wb_dat_i(dat_o_0), .wb_dat_o(dat_i_0), 
