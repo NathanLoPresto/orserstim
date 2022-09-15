@@ -3,7 +3,7 @@ Verilog and Python for a general purpose data acquisition system using an OpalKe
 
 ## Quick Start
 
-1. Install with pip
+1. Install with pip STATE THIS IS AT CMD LINE. EXPECT YOU MIGHT NEED ADMIN. SPECIFY.
 
 ```
 pip install PACKAGE_NAME
