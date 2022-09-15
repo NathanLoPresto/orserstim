@@ -14,7 +14,7 @@ To use an FPGA and peripherals:
 
 2. Download [FrontPanel](https://pins.opalkelly.com/downloads) from OpalKelly WHICH ONE? XEM710. I'M ASSUMING THIS SHOULD BE EXPORT AND A .CSV, BUT SAY SO.
 
-3. Download [Registers.xlsx](https://github.com/lucask07/covg_fpga/blob/daq_v2/python/Registers.xlsx) from the GitHub WHICH ONE?
+3. Download [Registers.xlsx](https://github.com/lucask07/covg_fpga/blob/daq_v2/python/Registers.xlsx) from the GitHub I DON'T HAVE ACCESS TO THIS
 
 4. Create config.yaml with create_yaml and edit fields as needed
 
