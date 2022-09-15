@@ -12,7 +12,7 @@ pip install PACKAGE_NAME
 To use an FPGA and peripherals:
 
 
-2. Download [FrontPanel](https://pins.opalkelly.com/downloads) from OpalKelly WHICH ONE?
+2. Download [FrontPanel](https://pins.opalkelly.com/downloads) from OpalKelly WHICH ONE? XEM710. I'M ASSUMING THIS SHOULD BE EXPORT AND A .CSV, BUT SAY SO.
 
 3. Download [Registers.xlsx](https://github.com/lucask07/covg_fpga/blob/daq_v2/python/Registers.xlsx) from the GitHub WHICH ONE?
 
