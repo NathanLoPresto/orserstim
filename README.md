@@ -24,7 +24,7 @@ To use an FPGA and peripherals:
 YAML created at C:/Users/username/.PACKAGE_NAME
 ```
 
-See [Installation Guide]() for more information.
+See [Installation Guide]() for more information. LINK DOESN'T WORK FOR ME
 
 
 ## Acknowledgements 
