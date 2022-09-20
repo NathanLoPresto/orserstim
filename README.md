@@ -3,7 +3,8 @@ Verilog and Python for a general purpose data acquisition system using an OpalKe
 
 ## Quick Start
 
-1. Install with pip
+1. Install with pip STATE THIS IS AT CMD LINE. EXPECT YOU MIGHT NEED ADMIN. SPECIFY.
+2. WHAT AM I SUPPOSED TO INSTALL? WHAT PACKAGE?
 
 ```
 pip install PACKAGE_NAME
@@ -12,9 +13,9 @@ pip install PACKAGE_NAME
 To use an FPGA and peripherals:
 
 
-2. Download [FrontPanel](https://pins.opalkelly.com/downloads) from OpalKelly
+2. Download [FrontPanel](https://pins.opalkelly.com/downloads) from OpalKelly WHICH ONE? I'M ASSUMING THIS SHOULD BE the USB ONLY ONE BUT SAY SO.
 
-3. Download [Registers.xlsx](https://github.com/lucask07/covg_fpga/blob/daq_v2/python/Registers.xlsx) from the GitHub
+3. Download [Registers.xlsx](https://github.com/lucask07/covg_fpga/blob/daq_v2/python/Registers.xlsx) from the GitHub I DON'T HAVE ACCESS TO THIS
 
 4. Create config.yaml with create_yaml and edit fields as needed
 
@@ -24,7 +25,7 @@ To use an FPGA and peripherals:
 YAML created at C:/Users/username/.PACKAGE_NAME
 ```
 
-See [Installation Guide]() for more information.
+See [Installation Guide]() for more information. LINK DOESN'T WORK FOR ME
 
 
 ## Acknowledgements 
