@@ -100,7 +100,7 @@ dac_offset = 0x1e00
 
 #Instance variable of ddr, set with cmd and cc signals
 cmd_signal = 212
-cc_signal = np.ones(4194304, dtype=np.uint16) * dac_offset
+cc_signal = np.ones(4194304, dtype=np.uint32) * dac_offset
 
 #Signals loaded into daq.ddr object 
 daq.ddr.data_arrays[1] = cmd_signal
@@ -108,7 +108,19 @@ daq.ddr.data_arrays[0] = cc_signal
 
 #DDR is loaded with waveforms
 daq.ddr.write_setup()
-block_pipe_return, speed_MBs = daq.ddr.write_channels(set_ddr_read=False)
+
+data = np.ones(
+            int(len(daq.ddr.data_arrays[0])*daq.ddr.parameters['channels']), dtype = np.uint32)
+
+command_structure = [0x00000001, 0x00000002, 0x00000003, 0x00000004, 0x00000005]
+
+
+#change dac_VAL_OUT
+for i in range (len(data)):
+    data[i] = np.uint32(command_structure[i%3])
+
+daq.ddr.write_buf(bytearray(data))
+#block_pipe_return, speed_MBs = daq.ddr.write_channels(set_ddr_read=False)
 
 #FIFOs reset
 daq.ddr.reset_mig_interface()
