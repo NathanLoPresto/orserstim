@@ -112,12 +112,12 @@ daq.ddr.write_setup()
 data = np.ones(
             int(len(daq.ddr.data_arrays[0])*daq.ddr.parameters['channels']), dtype = np.uint32)
 
-command_structure = [0x00000001, 0x00000002, 0x00000003, 0x00000004, 0x00000005]
+command_structure = [0x10000001, 0x10000002, 0x10000003, 0x10000004, 0x00000005]
 
 
 #change dac_VAL_OUT
 for i in range (len(data)):
-    data[i] = np.uint32(command_structure[i%3])
+    data[i] = np.uint32(command_structure[i%4])
 
 daq.ddr.write_buf(bytearray(data))
 #block_pipe_return, speed_MBs = daq.ddr.write_channels(set_ddr_read=False)
