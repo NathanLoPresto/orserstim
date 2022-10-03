@@ -1,10 +1,131 @@
+###IMPORTS###
 from PyQt5 import QtWidgets, QtCore
 import pyqtgraph as pg
 import time
+import tkinter as tk
+import datetime
+import numpy as np
 
 
+###CONSTANTS###
 STIM_SETUP = [0xe0ff0000, 0x80200000, 0x80210000, 0x8026ffff, 0x6a000000, 0x800000c7, 0x8001051a, 0x80020000, 0x80030080, 0x80040016, 0x80050017, 
 0x800600a8, 0x8007000a, 0x8008ffff, 0xa00a0000, 0xa00cffff, 0x802200e2, 0x802300aa, 0x80240080, 0x80254f00, 0xd0280000, 0x8020aaaa, 0x802100ff, 0xe0ff0000]
+FS = 5e6  # sampling frequency 
+dac80508_offset = 0x8000 # DAC offset
+currentDate = datetime.datetime.now()                          # Grabbing the current date and time
+dateString = currentDate.strftime("/home/orserpi/Downloads/JSONData/%B%Y%A%I%M%S%p") # Formatting date and time into .json file name
+channelsToConvert = 4
+dac_offset = 0x1e00
+cmd_signal = 212
+cc_signal = np.ones(4194304, dtype=np.uint32) * dac_offset
+
+###FUNCTIONS###
+def runGUI():
+    dataPointsToShow = 1000          # The Amount of data points to show in the graphing window
+    
+    top = tk.Tk()                                       # Initialize the TKinter APP
+    top.title("Intan Sense/Stim Initialization window") # Setting the title of the tk app
+    top.geometry("1200x650")                            # Setting the geometry in pixels (make this hierarchical later)
+    
+    #Arrays and data types to hold GUI variables and attributes
+    CheckVars, StimVars, PosVars, MagWidget, Buttons, StimButtons, PosButtons, MagVars = [0]*16, [0]*16, [0]*16, [0]*16, [0]*16, [0]*16, [0]*16, [0]*16
+    electrodesSampled, electrodesStimming, polarities = [0], [0], [0]
+    PulseVar = tk.StringVar()
+    MagVars = tk.StringVar()
+    RecoveryVar = tk.StringVar()
+    lowVar = tk.IntVar()
+    for x in range(16):
+        CheckVars[x] = tk.IntVar()
+    for x in range(16):
+        StimVars[x] = tk.IntVar()
+    for x in range(16):
+        PosVars[x]  = tk.IntVar()
+    
+    
+    #Packing and initializing the elements in the TK app
+    frame = tk.LabelFrame(top, text = "Select your electrodes to sample/plot", padx = 20, pady = 20)
+    frame.pack(pady =20, padx = 10, side = "left")
+    
+    for x in range(16):
+        Buttons[x] = tk.Checkbutton(frame, text = ("Electrode " + str(x)), variable = CheckVars[x], onvalue =1, offvalue =0, height =1, width =20, anchor = "w").pack()   
+
+    frame2 = tk.LabelFrame(top, text = "Select your anodic electrodes", padx = 20, pady = 20)
+    frame2.pack(pady =20, padx = 10, side = "left")
+    
+    for x in range(16):
+        StimButtons[x] = tk.Checkbutton(frame2, text = ("Electrode " + str(x)), variable = StimVars[x], onvalue =1, offvalue =0, height =1, width =20, anchor = "w").pack()
+    
+    frame4 = tk.LabelFrame(top, text = "Select your cathodic electrodes", padx = 20, pady = 20)
+    frame4.pack(pady =20, padx = 10, side = "left")
+    
+    for x in range(16):
+        PosButtons[x] = tk.Checkbutton(frame4, text = ("Electrode " + str(x)), variable = PosVars[x], onvalue =1, offvalue =0, height =1, width =20, anchor = "w").pack()
+    
+    framea = tk.LabelFrame(top, padx = 20, pady = 20)
+    framea.pack(pady =20, padx = 10, side = "left")
+    
+    frame5 = tk.LabelFrame(framea, text = "Stim Magnitude in uA", padx = 20, pady = 20)
+    frame5.pack(pady =20, padx = 10, side = "top")
+    
+    frame7 = tk.LabelFrame(framea, text = "Pulse width in us", padx = 20, pady = 20)
+    frame7.pack(pady =20, padx = 10, side = "top")
+    
+    frame8 = tk.LabelFrame(framea, text = "Recovery Ratio", padx = 20, pady = 20)
+    frame8.pack(pady =20, padx = 10, side = "top")
+    
+    frame9 = tk.LabelFrame(framea, padx = 20, pady = 20)
+    frame9.pack(pady =20, padx = 10, side = "top")
+    
+    lowCheck = tk.Checkbutton(framea, variable = lowVar, text = "Check for Low Gain" ,onvalue =1, offvalue =0, height =1, width =20, anchor = "w").pack()
+    
+    MagWidget = tk.Entry(frame5, bd =5, textvariable = MagVars).pack()
+    E1 = tk.Entry(frame7, bd=5, textvariable = PulseVar).pack()
+    E2 = tk.Entry(frame8, bd=5, textvariable = RecoveryVar).pack()
+    
+    P0 = tk.Button(framea, text = "Impedance Test", command =lambda: fullTest()).pack(side = "bottom")
+    P1 = tk.Button(framea, text = "ENTER", command =lambda: killGUI(top)).pack(side = "bottom")
+    
+    top.mainloop() # Starts the TK app main loop
+    
+    #Checking and initializing variables set by the GUI
+    for x in range(16):
+        if CheckVars[x].get()==1:
+            electrodesSampled.append(x)
+            
+    for x in range(16):
+        if StimVars[x].get()==1:
+            electrodesStimming.append(x)
+            
+    for x in range(16):
+        if PosVars[x].get()==1:
+            polarities.append(x)
+            
+    try:
+        pulseWidth = int(PulseVar.get())
+    except ValueError:
+        print("Invalid Pulse Width Value, default to 500")
+        pulseWidth = 500
+    
+    try:
+        MagVars = int(MagVars.get())
+    except ValueError:
+        print("Invalid magnitude, default to 255")
+        MagVars = 255
+        
+    try:
+        RecoveryVar = int(RecoveryVar.get())
+    except ValueError:
+        print("Invalid magnitude, default to 1")
+        RecoveryVar =1
+        
+    highLow =lowVar.get()
+    
+    #Popping the default value off of the arrays
+    electrodesStimming.pop(0)
+    electrodesSampled.pop(0)
+    polarities.pop(0)
+    return electrodesStimming, polarities, pulseWidth, RecoveryVar
+
 
 def fullTest():
     print("doing the full test")
