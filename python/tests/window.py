@@ -20,6 +20,17 @@ cmd_signal = 212
 cc_signal = np.ones(4194304, dtype=np.uint32) * dac_offset
 
 ###FUNCTIONS###
+def setAttributes(magnitude, anodes, cathodes, ratio):
+    attributesArray = []
+    for x in anodes:
+        attributesArray.append(int(electrodeMag(1,x, int(magnitude/len(anodes))), 32))
+        attributesArray.append(int(electrodeMag(0,x, int(magnitude/len(anodes)/ratio)), 32))
+    for x in cathodes:
+        attributesArray.append(int(electrodeMag(1,x, int(magnitude/len(cathodes)/ratio)), 32))
+        attributesArray.append(int(electrodeMag(0,x, int(magnitude/len(cathodes))), 32))
+    return attributesArray
+
+
 def runGUI():
     dataPointsToShow = 1000          # The Amount of data points to show in the graphing window
     
@@ -124,7 +135,7 @@ def runGUI():
     electrodesStimming.pop(0)
     electrodesSampled.pop(0)
     polarities.pop(0)
-    return electrodesStimming, polarities, pulseWidth, RecoveryVar
+    return electrodesStimming, polarities, pulseWidth, RecoveryVar, MagVars
 
 
 def fullTest():

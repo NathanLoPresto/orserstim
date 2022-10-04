@@ -73,7 +73,8 @@ if __name__ == "__main__":
     daq.DAC[0].set_ctrl_reg(0x3020)
     daq.DAC[0].filter_select(operation="clear")
 
-    #Host-driven writes
+    print(STIM_SETUP)
+    #STIM SETUP
     for x in range(len(STIM_SETUP)):
         daq.DAC[0].write(int(STIM_SETUP[x]))
 
@@ -89,7 +90,14 @@ if __name__ == "__main__":
     data = np.ones(int(len(daq.ddr.data_arrays[0])*daq.ddr.parameters['channels']), dtype = np.uint32)
 
     #RUNNING THE GUI#
-    electrodesStimming, polarities, pulseWidth, RecoveryVar = runGUI()
+    electrodesStimming, polarities, pulseWidth, RecoveryVar, magnitude = runGUI()
+
+    attributes = setAttributes(magnitude, electrodesStimming, polarities, RecoveryVar)
+
+    print(attributes)
+    #SETTING UP THE MAGNITUDES AND RATIOS OF STIMMING#
+    for x in range(len(attributes)):
+        daq.DAC[0].write(int(attributes[x], 16))
 
     commandStructure = make_command_structure(electrodesStimming, polarities, channelsToConvert, pulseWidth, RecoveryVar)
     #change dac_VAL_OUT
