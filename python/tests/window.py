@@ -5,6 +5,8 @@ import time
 import tkinter as tk
 import datetime
 import numpy as np
+import os
+import getpass
 
 
 ###CONSTANTS###
@@ -12,25 +14,16 @@ STIM_SETUP = [0xe0ff0000, 0x80200000, 0x80210000, 0x8026ffff, 0x6a000000, 0x8000
 0x800600a8, 0x8007000a, 0x8008ffff, 0xa00a0000, 0xa00cffff, 0x802200e2, 0x802300aa, 0x80240080, 0x80254f00, 0xd0280000, 0x8020aaaa, 0x802100ff, 0xe0ff0000]
 FS = 5e6  # sampling frequency 
 dac80508_offset = 0x8000 # DAC offset
-currentDate = datetime.datetime.now()                          # Grabbing the current date and time
+currentDate = datetime.datetime.now() # Grabbing the current date and time
 dateString = currentDate.strftime("/home/orserpi/Downloads/JSONData/%B%Y%A%I%M%S%p") # Formatting date and time into .json file name
-channelsToConvert = 4
-dac_offset = 0x1e00
+channelsToConvert = 4 #This should be set lower for the Orserstim project
+dac_offset = 0x1e00 
 cmd_signal = 212
 cc_signal = np.ones(4194304, dtype=np.uint32) * dac_offset
 
 ###FUNCTIONS###
-def setAttributes(magnitude, anodes, cathodes, ratio):
-    attributesArray = []
-    for x in anodes:
-        attributesArray.append(int(electrodeMag(1,x, int(magnitude/len(anodes))), 32))
-        attributesArray.append(int(electrodeMag(0,x, int(magnitude/len(anodes)/ratio)), 32))
-    for x in cathodes:
-        attributesArray.append(int(electrodeMag(1,x, int(magnitude/len(cathodes)/ratio)), 32))
-        attributesArray.append(int(electrodeMag(0,x, int(magnitude/len(cathodes))), 32))
-    return attributesArray
 
-
+#Runs the GUI to get data from the user about the experiment
 def runGUI():
     dataPointsToShow = 1000          # The Amount of data points to show in the graphing window
     
@@ -138,13 +131,11 @@ def runGUI():
     return electrodesStimming, polarities, pulseWidth, RecoveryVar, MagVars
 
 
-def fullTest():
-    print("doing the full test")
-
 # Self explanatory
 def killGUI(gui):
     gui.destroy()
     
+#Changes the magnitude of stimming electrodes
 def electrodeMag(polarity, electrode, magnitude):
     commandString = "a0"
     magnitude = (magnitude%256)
@@ -156,9 +147,11 @@ def electrodeMag(polarity, electrode, magnitude):
     commandString += ((hex(baseReg))[2:] + "8000")
     return commandString
 
+#Turns off all stim channels
 def stimOff():
     return 0xa02a0000
 
+#Turns on an array of channels 
 def onChannel(channels):
     commandInt = 0xa02a0000
     for x in channels:
@@ -182,7 +175,7 @@ def polarityNegative(channels):
     commandInt|=flipped
     return commandInt
 
-
+#Sets the magnitudes and polarities of the stimming
 def setAttributes(magnitude, anodes, cathodes, ratio):
     list_of_commands = []
     for x in anodes:
@@ -194,11 +187,13 @@ def setAttributes(magnitude, anodes, cathodes, ratio):
 
     return list_of_commands
 
+#Sends a convert command to a single channel
 def convertChannel(channel):
     baseConvert = 0x08000000
     baseConvert |= (channel<<16)
     return baseConvert
 
+#Makes the command structure to load into the DDR3
 def make_command_structure(electrodesStimming, polarities, channelsToConvert, pulseWidth, RecoveryVar):
 
     mosiIterator =0
@@ -234,3 +229,19 @@ def make_command_structure(electrodesStimming, polarities, channelsToConvert, pu
         command_structure.append(stimOff())
 
     return command_structure
+
+#Creates the .yaml file 
+def createYaml():
+    username = getpass.getuser()
+    pathname = "C:/Users/"+ username + "/.pyripherals"
+    filepath = os.path.join(pathname, "config.yaml")
+    if not os.path.exists(pathname):
+        os.makedirs(pathname)
+    f = open(filepath, 'w')
+    line1 = "endpoint_max_width: 32\n"
+    line2 = "ep_defines_path: C:/Users/" + username + "/orserstim/fpga_XEM7310/fpga_XEM7310.srcs/sources_1/ep_defines.v\n"
+    line3 = "fpga_bitfile_path: C:/Users/" + username + "/orserstim/fpga_XEM7310/fpga_XEM7310.runs/impl_1/top_level_module.bit\n"
+    line4 = "frontpanel_path: C:/Program Files/Opal Kelly/FrontPanelUSB\n"
+    line5= "registers_path: C:/Users/" + username + "/pyripherals/Registers.xlsx\n"
+    f.write(line1+line2+line3+line4+line5)
+    f.close

@@ -23,8 +23,15 @@ import time
 import sys
 import os
 
+
+def emergencyInterrupt():
+    daq.ddr.write_buf(bytearray(0x00000000))
+    print("Executing emergency interrupt")
+    exit()
+
 #MAIN LOOP#
 if __name__ == "__main__":
+    createYaml()
     # The boards.py file is located in the covg_fpga folder so we need to find that folder. If it is not above the current directory, the program fails.
     covg_fpga_path = os.getcwd()
     for i in range(15):
@@ -116,3 +123,10 @@ if __name__ == "__main__":
     daq.ddr.fpga.set_ep_simultaneous(daq.ddr.endpoints['ADC_WRITE_ENABLE'].address, bits, [1, 1])
     for i in range(6):
         daq.DAC[i].set_data_mux("DDR")
+    
+    while (True):
+        try:
+            time.sleep(5)
+            print("running")
+        except KeyboardInterrupt:
+            emergencyInterrupt()
