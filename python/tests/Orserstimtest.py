@@ -69,6 +69,7 @@ if __name__ == "__main__":
 
     #Initialize a daq object, containing DAC, DDR etc. objects
     daq = Daq(f)
+    daq.DAC[0].set_spi_sclk_divide(500)
 
     gpio = Daq.GPIO(f)
     gpio.fpga.debug = True
