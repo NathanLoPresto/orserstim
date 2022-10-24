@@ -23,7 +23,7 @@ import time
 import sys
 import os
 
-
+#Fills DDR with null commands, exits the python script
 def emergencyInterrupt():
     daq.ddr.write_buf(bytearray(0x00000000))
     print("Executing emergency interrupt")
@@ -31,7 +31,8 @@ def emergencyInterrupt():
 
 #MAIN LOOP#
 if __name__ == "__main__":
-    createYaml()
+    createYaml() #Creates the .yaml file in the .pyripherals folder 
+
     # The boards.py file is located in the covg_fpga folder so we need to find that folder. If it is not above the current directory, the program fails.
     covg_fpga_path = os.getcwd()
     for i in range(15):
@@ -69,7 +70,6 @@ if __name__ == "__main__":
 
     #Initialize a daq object, containing DAC, DDR etc. objects
     daq = Daq(f)
-    daq.DAC[0].set_spi_sclk_divide(500)
 
     gpio = Daq.GPIO(f)
     gpio.fpga.debug = True
@@ -81,7 +81,6 @@ if __name__ == "__main__":
     daq.DAC[0].set_ctrl_reg(0x3020)
     daq.DAC[0].filter_select(operation="clear")
 
-    print(STIM_SETUP)
     #STIM SETUP
     for x in range(len(STIM_SETUP)):
         daq.DAC[0].write(int(STIM_SETUP[x]))
@@ -98,11 +97,16 @@ if __name__ == "__main__":
     data = np.ones(int(len(daq.ddr.data_arrays[0])*daq.ddr.parameters['channels']), dtype = np.uint32)
 
     #RUNNING THE GUI#
-    electrodesStimming, polarities, pulseWidth, RecoveryVar, magnitude = runGUI()
+    electrodesStimming, polarities, pulseWidth, RecoveryVar, magnitude, SpeedVar = runGUI()
+
+    finalSpeed = 100000/SpeedVar
+
+    print("SpeedVar is: " + str(SpeedVar) + " and the finalSpeed is: " + str(finalSpeed))
+    
+    daq.DAC[0].set_spi_sclk_divide(int(finalSpeed))
 
     attributes = setAttributes(magnitude, electrodesStimming, polarities, RecoveryVar)
 
-    print(attributes)
     #SETTING UP THE MAGNITUDES AND RATIOS OF STIMMING#
     for x in range(len(attributes)):
         daq.DAC[0].write(int(attributes[x], 16))
@@ -111,6 +115,9 @@ if __name__ == "__main__":
     #change dac_VAL_OUT
     for i in range (len(data)):
         data[i] = np.uint32(commandStructure[i%(len(commandStructure))])
+
+    for x in commandStructure:
+        print(hex(x))
 
     daq.ddr.write_buf(bytearray(data))
 
@@ -125,6 +132,7 @@ if __name__ == "__main__":
     for i in range(6):
         daq.DAC[i].set_data_mux("DDR")
     
+    #Endless loop, waits for keyboard interrupt, will eventually fill data back from the miso line 
     while (True):
         try:
             time.sleep(5)

@@ -29,7 +29,7 @@ def runGUI():
     
     top = tk.Tk()                                       # Initialize the TKinter APP
     top.title("Intan Sense/Stim Initialization window") # Setting the title of the tk app
-    top.geometry("1200x650")                            # Setting the geometry in pixels (make this hierarchical later)
+    top.geometry("1200x750")                            # Setting the geometry in pixels (make this hierarchical later)
     
     #Arrays and data types to hold GUI variables and attributes
     CheckVars, StimVars, PosVars, MagWidget, Buttons, StimButtons, PosButtons, MagVars = [0]*16, [0]*16, [0]*16, [0]*16, [0]*16, [0]*16, [0]*16, [0]*16
@@ -37,6 +37,7 @@ def runGUI():
     PulseVar = tk.StringVar()
     MagVars = tk.StringVar()
     RecoveryVar = tk.StringVar()
+    SpeedVar = tk.StringVar()
     lowVar = tk.IntVar()
     for x in range(16):
         CheckVars[x] = tk.IntVar()
@@ -77,7 +78,7 @@ def runGUI():
     frame8 = tk.LabelFrame(framea, text = "Recovery Ratio", padx = 20, pady = 20)
     frame8.pack(pady =20, padx = 10, side = "top")
     
-    frame9 = tk.LabelFrame(framea, padx = 20, pady = 20)
+    frame9 = tk.LabelFrame(framea, text = "SPI Speed" , padx = 20, pady = 20)
     frame9.pack(pady =20, padx = 10, side = "top")
     
     lowCheck = tk.Checkbutton(framea, variable = lowVar, text = "Check for Low Gain" ,onvalue =1, offvalue =0, height =1, width =20, anchor = "w").pack()
@@ -85,6 +86,7 @@ def runGUI():
     MagWidget = tk.Entry(frame5, bd =5, textvariable = MagVars).pack()
     E1 = tk.Entry(frame7, bd=5, textvariable = PulseVar).pack()
     E2 = tk.Entry(frame8, bd=5, textvariable = RecoveryVar).pack()
+    E3 = tk.Entry(frame9, bd=5, textvariable = SpeedVar).pack()
     
     P0 = tk.Button(framea, text = "Impedance Test", command =lambda: fullTest()).pack(side = "bottom")
     P1 = tk.Button(framea, text = "ENTER", command =lambda: killGUI(top)).pack(side = "bottom")
@@ -121,6 +123,12 @@ def runGUI():
     except ValueError:
         print("Invalid magnitude, default to 1")
         RecoveryVar =1
+    
+    try:
+        SpeedVar = int(SpeedVar.get())
+    except ValueError:
+        print("Invalid speed, default to 5 Mhz")
+        Speedvar =1
         
     highLow =lowVar.get()
     
@@ -128,7 +136,7 @@ def runGUI():
     electrodesStimming.pop(0)
     electrodesSampled.pop(0)
     polarities.pop(0)
-    return electrodesStimming, polarities, pulseWidth, RecoveryVar, MagVars
+    return electrodesStimming, polarities, pulseWidth, RecoveryVar, MagVars, SpeedVar
 
 
 # Self explanatory
