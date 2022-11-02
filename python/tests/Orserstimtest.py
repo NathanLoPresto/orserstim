@@ -11,6 +11,7 @@ from pyripherals.peripherals.DDR3 import DDR3
 from pyripherals.core import FPGA, Endpoint
 from pyripherals.utils import from_voltage
 from ctypes import sizeof
+import binascii
 from time import sleep
 import tkinter as tk
 from window import *
@@ -132,10 +133,20 @@ if __name__ == "__main__":
     for i in range(6):
         daq.DAC[i].set_data_mux("DDR")
     
+    time.sleep(5)
+    d, bytes_read_error = daq.ddr.read_adc()
+    print("Data type of d is: " + str(type(d)) + "\n")
+    print("Data type of d[0] is: " + str(type(d[0])) + "\n")
+    print(d)
+    print(d[0:100])
+    
+
+    '''
     #Endless loop, waits for keyboard interrupt, will eventually fill data back from the miso line 
     while (True):
         try:
-            time.sleep(5)
-            print("running")
+            d, bytes_read_error = daq.ddr.read_adc()
+            print(d.dtype)
         except KeyboardInterrupt:
             emergencyInterrupt()
+            '''
