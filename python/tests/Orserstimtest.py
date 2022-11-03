@@ -133,11 +133,20 @@ if __name__ == "__main__":
     for i in range(6):
         daq.DAC[i].set_data_mux("DDR")
     
+
+    #Getting ready to read ADC results from the DDR
+    daq.ddr.clear_adc_read()
+    daq.ddr.clear_adc_write()
+    daq.ddr.clear_dac_read()
+    daq.ddr.reset_mig_interface()
+    daq.ddr.set_adc_dac_simultaneous()
+    daq.ddr.set_adc_read()
+    
+
     time.sleep(5)
     d, bytes_read_error = daq.ddr.read_adc()
     print("Data type of d is: " + str(type(d)) + "\n")
     print("Data type of d[0] is: " + str(type(d[0])) + "\n")
-    print(d)
     print(d[0:100])
     
 
