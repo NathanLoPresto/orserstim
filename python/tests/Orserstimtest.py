@@ -113,6 +113,7 @@ if __name__ == "__main__":
         daq.DAC[0].write(int(attributes[x], 16))
 
     commandStructure = make_command_structure(electrodesStimming, polarities, channelsToConvert, pulseWidth, RecoveryVar)
+    
     #change dac_VAL_OUT
     for i in range (len(data)):
         data[i] = np.uint32(commandStructure[i%(len(commandStructure))])
@@ -134,21 +135,32 @@ if __name__ == "__main__":
         daq.DAC[i].set_data_mux("DDR")
     
 
-    #Getting ready to read ADC results from the DDR
-    daq.ddr.clear_adc_read()
-    daq.ddr.clear_adc_write()
-    daq.ddr.clear_dac_read()
     daq.ddr.reset_mig_interface()
     daq.ddr.set_adc_dac_simultaneous()
-    daq.ddr.set_adc_read()
-    
 
-    time.sleep(5)
-    d, bytes_read_error = daq.ddr.read_adc()
-    print("Data type of d is: " + str(type(d)) + "\n")
-    print("Data type of d[0] is: " + str(type(d[0])) + "\n")
-    print(d[0:100])
+    time.sleep(10)
+    CHAN_UNDER_TEST = 0
+    output = pd.DataFrame()
+    data = {}
+    file_name = 'test'
+    data['filename'] = file_name
+    output = output.append(data, ignore_index=True)
+
+    print(output.head())
+    output.to_csv(os.path.join(data_dir, file_name + '.csv'))
+    idx = 0
+
+    daq.ddr.parameters['adc_channels'] =4
+
+    chan_data_one_repeat = daq.ddr.save_data(data_dir, file_name.format(idx) + '.h5', num_repeats = 4,
+                          blk_multiples=40) # blk multiples multiple of 10
+
+        # to get the deswizzled data of all repeats need to read the file
+    _, chan_data = read_h5(data_dir, file_name=file_name.format(idx) + '.h5', chan_list=np.arange(1))
+
     
+    # Long data sequence -- entire file 
+    #adc_data, timestamp, dac_data, ads, ads_seq_cnt, read_errors = daq.ddr.data_to_names(chan_data)
 
     '''
     #Endless loop, waits for keyboard interrupt, will eventually fill data back from the miso line 

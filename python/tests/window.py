@@ -78,7 +78,7 @@ def runGUI():
     frame8 = tk.LabelFrame(framea, text = "Recovery Ratio", padx = 20, pady = 20)
     frame8.pack(pady =20, padx = 10, side = "top")
     
-    frame9 = tk.LabelFrame(framea, text = "SPI Speed" , padx = 20, pady = 20)
+    frame9 = tk.LabelFrame(framea, text = "SPI Speed in kHz" , padx = 20, pady = 20)
     frame9.pack(pady =20, padx = 10, side = "top")
     
     lowCheck = tk.Checkbutton(framea, variable = lowVar, text = "Check for Low Gain" ,onvalue =1, offvalue =0, height =1, width =20, anchor = "w").pack()
