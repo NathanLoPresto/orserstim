@@ -42,7 +42,7 @@ if __name__ == "__main__":
             break
         else:
             # If we aren't in covg_fpga, move up a folder and check again
-            covg_fpga_path = os.path.dirname(covg_fpga_path)
+            boards_path = os.path.dirname(covg_fpga_path)
     sys.path.append(boards_path)
 
     eps = Endpoint.endpoints_from_defines
@@ -72,30 +72,48 @@ if __name__ == "__main__":
     #Initialize a daq object, containing DAC, DDR etc. objects
     daq = Daq(f)
 
+    # fast DACs -- only use to set SPI controller data source to DDR and disable filters
+    for i in [0,1,2,3,4,5]:
+        daq.DAC[i].filter_select(operation="clear")
+        daq.DAC[i].set_data_mux("DDR")
+        #daq.DAC[i].write_filter_coeffs()
+
+    # --- Configure for DDR read to DAC80508 ---
+    for dac_gp_ch in [0, 1]:
+        daq.DAC_gp[dac_gp_ch].set_data_mux('DDR')
+
+    ad7961s = daq.ADC
+    ads = daq.ADC_gp # ADS8686
+    ad7961s[0].reset_wire(1)
+
     gpio = Daq.GPIO(f)
     gpio.fpga.debug = True
     # configure the SPI debug MUXs
     gpio.spi_debug("dfast1")
     gpio.ads_misc("sdoa")  # do not care for this experiment
 
+    for chan in [0,1,2,3]:
+        ad7961s[chan].power_up_adc()  # standard sampling
+
+    time.sleep(0.1)
+    ad7961s[0].reset_wire(0)
+    time.sleep(1)
+
     # changing the length of trasnfer to 32-bit
     daq.DAC[0].set_ctrl_reg(0x3020)
     daq.DAC[0].filter_select(operation="clear")
 
+    '''
     #STIM SETUP
     for x in range(len(STIM_SETUP)):
         daq.DAC[0].write(int(STIM_SETUP[x]))
-
+ 
     #Not needed most likely, system will defualt to host mode during host-driven writes
     daq.DAC[0].set_data_mux("host")
-
-    #Signals loaded into daq.ddr object 
-    daq.ddr.data_arrays[1] = cmd_signal
-    daq.ddr.data_arrays[0] = cc_signal
+    '''
 
     #DDR is loaded with waveforms
-    daq.ddr.write_setup()
-    data = np.ones(int(len(daq.ddr.data_arrays[0])*daq.ddr.parameters['channels']), dtype = np.uint32)
+    daq.ddr.write_setup(data_driven_clock=False)
 
     #RUNNING THE GUI#
     electrodesStimming, polarities, pulseWidth, RecoveryVar, magnitude, SpeedVar = runGUI()
@@ -104,70 +122,93 @@ if __name__ == "__main__":
 
     print("SpeedVar is: " + str(SpeedVar) + " and the finalSpeed is: " + str(finalSpeed))
     
-    daq.DAC[0].set_spi_sclk_divide(int(finalSpeed))
+    #daq.DAC[0].set_spi_sclk_divide(int(finalSpeed))
 
     attributes = setAttributes(magnitude, electrodesStimming, polarities, RecoveryVar)
-
+    '''
     #SETTING UP THE MAGNITUDES AND RATIOS OF STIMMING#
     for x in range(len(attributes)):
         daq.DAC[0].write(int(attributes[x], 16))
+    '''
+    for i in range(6):
+        daq.DAC[i].set_data_mux("DDR")
 
-    commandStructure = make_command_structure(electrodesStimming, polarities, channelsToConvert, pulseWidth, RecoveryVar)
-    
-    #change dac_VAL_OUT
-    for i in range (len(data)):
-        data[i] = np.uint32(commandStructure[i%(len(commandStructure))])
+    #commandStructure = make_command_structure(electrodesStimming, polarities, channelsToConvert, pulseWidth, RecoveryVar)
 
-    for x in commandStructure:
-        print(hex(x))
+    daq.ddr.data_arrays[1]= np.ones(int(len(daq.ddr.data_arrays[0])), dtype = np.uint16) * 0xc0fb
+    daq.ddr.data_arrays[0]= np.ones(int(len(daq.ddr.data_arrays[0])), dtype = np.uint16) * 0x0000
 
-    daq.ddr.write_buf(bytearray(data))
+    for i in [0,1,2,3,4,5]:
+        daq.DAC[i].filter_select(operation="clear")
+        daq.DAC[i].set_data_mux("DDR")
+        #daq.DAC[i].write_filter_coeffs()
+
+    # --- Configure for DDR read to DAC80508 ---
+    for dac_gp_ch in [0, 1]:
+        daq.DAC_gp[dac_gp_ch].set_data_mux('DDR')
+
+
+    #Writing to the channels
+    daq.ddr.set_adcs_connected()
+    daq.ddr.clear_dac_read()
+    daq.ddr.clear_adc_write()
+    daq.ddr.reset_fifo(name='ALL')
+    daq.ddr.reset_mig_interface()
+
+    daq.ddr.write_channels(set_ddr_read=False)
 
     #FIFOs reset
     daq.ddr.reset_mig_interface()
-    daq.ddr.reset_fifo('ALL')
+    daq.ddr.set_adc_dac_simultaneous() 
 
-    # FIFOs restarted, data mux set to read from DDR
-    bits = [daq.ddr.endpoints['ADC_WRITE_ENABLE'].bit_index_low,
-            daq.ddr.endpoints['DAC_READ_ENABLE'].bit_index_low]
-    daq.ddr.fpga.set_ep_simultaneous(daq.ddr.endpoints['ADC_WRITE_ENABLE'].address, bits, [1, 1])
-    for i in range(6):
-        daq.DAC[i].set_data_mux("DDR")
-    
+    #Starting the tests:
+def run_test(repeat=False, num_repeats=8, blk_multiples=40, PLT=False, KEEP_DAC_GOING=False):
 
-    daq.ddr.reset_mig_interface()
-    daq.ddr.set_adc_dac_simultaneous()
+    if repeat:  # to repeat data capture without rewriting the DAC data
+        
+        # stop access to the FIFOs so that after reset of the FIFO(s) no new data is added/extracted
+        daq.ddr.clear_adc_read()
+        daq.ddr.clear_adc_write()
+        daq.ddr.clear_dac_read()
 
-    time.sleep(10)
-    CHAN_UNDER_TEST = 0
-    output = pd.DataFrame()
-    data = {}
+        if not KEEP_DAC_GOING:
+            daq.ddr.reset_fifo(name='ALL')
+
+        elif KEEP_DAC_GOING:
+            # alternatively to keep DAC data running only reset ADC fifos 
+            # (but mismatches of DAC written / read will fail)
+            daq.ddr.reset_fifo(name='ADC_IN')
+            daq.ddr.reset_fifo(name='ADC_TRANSFER')
+
+        daq.ddr.reset_mig_interface()  # self.fpga.send_trig(self.endpoints['UI_RESET'])
+
+        daq.ddr.set_adc_dac_simultaneous()  # note that the MIG interface addresses are driven by the FIFOs so will idle 
+                            # until the FIFOs are reenable with ddr_write_finish()
+        time.sleep(0.01)
+
     file_name = 'test'
-    data['filename'] = file_name
-    output = output.append(data, ignore_index=True)
-
-    print(output.head())
-    output.to_csv(os.path.join(data_dir, file_name + '.csv'))
     idx = 0
 
-    daq.ddr.parameters['adc_channels'] =4
+    # saves data to a file; returns to the workspace the deswizzled DDR data of the last repeat
+    # ddr.save_data calls:   set_adc_read()  # enable data into the ADC reading FIFO
 
-    chan_data_one_repeat = daq.ddr.save_data(data_dir, file_name.format(idx) + '.h5', num_repeats = 4,
-                          blk_multiples=40) # blk multiples multiple of 10
+    daq.ddr.parameters= {"data_version": daq.ddr.data_version}
 
-        # to get the deswizzled data of all repeats need to read the file
-    _, chan_data = read_h5(data_dir, file_name=file_name.format(idx) + '.h5', chan_list=np.arange(1))
+    chan_data_one_repeat = daq.ddr.save_data(data_dir, file_name.format(idx) + '.h5', num_repeats = num_repeats,
+                            blk_multiples=blk_multiples) # blk multiples must be a multiple of 10
 
-    
-    # Long data sequence -- entire file 
-    #adc_data, timestamp, dac_data, ads, ads_seq_cnt, read_errors = daq.ddr.data_to_names(chan_data)
+    # to get the deswizzled data of all repeats need to read the file
+    _, chan_data = read_h5(data_dir, file_name=file_name.format(idx) + '.h5', chan_list=np.arange(8))
 
-    '''
-    #Endless loop, waits for keyboard interrupt, will eventually fill data back from the miso line 
-    while (True):
-        try:
-            d, bytes_read_error = daq.ddr.read_adc()
-            print(d.dtype)
-        except KeyboardInterrupt:
-            emergencyInterrupt()
-            '''
+    # Long data sequence read back entire file 
+    adc_data, timestamp, dac_data, ads, ads_seq_cnt, reading_error = daq.ddr.data_to_names(chan_data)
+
+    return chan_data, adc_data, dac_data
+
+chan_data, adc_data, dac_data = run_test(num_repeats = 8, PLT=True)
+time.sleep(1)
+chan_data, adc_data, dac_data = run_test(num_repeats = 8, PLT=True)
+time.sleep(1)
+chan_data, adc_data, dac_data = run_test(num_repeats = 8, PLT=True)
+
+
