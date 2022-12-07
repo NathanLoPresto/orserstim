@@ -965,13 +965,14 @@ module top_level_module(
     wire [32:0] filter_spi_data[0:(AD5453_NUM-1)];
     wire [31:0] host_spi_data[0:(AD5453_NUM-1)];
     wire [(AD5453_NUM-1):0] spi_host_trigger_fast_dac; 
-    
+
     //Data valid for intan data
     reg [31:0] intan_last_read;
     always @(posedge clk_sys) begin
         if (sys_rst) begin
             intan_last_read <= 32'h0;
         end
+        //Should I replace the 0s with Ks to iterate through all of the AD5453 SPIs?
         else if (fifo_data_valid[0]) begin
             intan_last_read <= intan_results[0];
         end
@@ -1069,8 +1070,12 @@ module top_level_module(
         end
     endgenerate
 
+
+    wire intan_last_read_wire;
+    assign intan_last_read_wire = intan_last_read;
+
     // Four wire outs for debug of filter loading. TODO: generally unecessary now. 
-     okWireOut      wo06 (.okHE(okHE), .okEH(okEHx[ 18*65 +: 65 ]), .ep_addr(`AD5453_COEFF_DEBUG_0), .ep_datain(ep_wire_filtsel));
+     okWireOut      wo06 (.okHE(okHE), .okEH(okEHx[ 18*65 +: 65 ]), .ep_addr(`AD5453_COEFF_DEBUG_0), .ep_datain(intan_last_read_wire)); //I replaced filtsel with intan_last_read
      okWireOut      wo07 (.okHE(okHE), .okEH(okEHx[ 19*65 +: 65 ]), .ep_addr(`AD5453_COEFF_DEBUG_1), .ep_datain(coeff_debug_out2[0]));
      okWireOut      wo08 (.okHE(okHE), .okEH(okEHx[ 20*65 +: 65 ]), .ep_addr(`AD5453_COEFF_DEBUG_2), .ep_datain(coeff_debug_out1[1]));
      okWireOut      wo09 (.okHE(okHE), .okEH(okEHx[ 21*65 +: 65 ]), .ep_addr(`AD5453_COEFF_DEBUG_3), .ep_datain(coeff_debug_out2[1]));
