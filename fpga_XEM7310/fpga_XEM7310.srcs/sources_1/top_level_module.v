@@ -146,7 +146,7 @@ module top_level_module(
     //Brought this down from inout, repurposed
     wire en_5v;
     wire  [(AD5453_NUM-1):0]d_sdo;
-    assign d_sdo_io = d_sdo[0];
+    assign d_sdo[0] = d_sdo_io;
     
 	clk_wiz_0 adc_pll(
 	.clk_in1(clk_sys), //in at 200 MHz
@@ -966,18 +966,6 @@ module top_level_module(
     wire [31:0] host_spi_data[0:(AD5453_NUM-1)];
     wire [(AD5453_NUM-1):0] spi_host_trigger_fast_dac; 
 
-    //Data valid for intan data
-    reg [31:0] intan_last_read;
-    always @(posedge clk_sys) begin
-        if (sys_rst) begin
-            intan_last_read <= 32'h0;
-        end
-        //Should I replace the 0s with Ks to iterate through all of the AD5453 SPIs?
-        else if (fifo_data_valid[0]) begin
-            intan_last_read <= intan_results[0];
-        end
-    end
-
     //Extended to 32 bits of Miso result data
     wire [31:0] intan_results[0:(AD5453_NUM-1)];
     wire fifo_data_valid[0:(AD5453_NUM-1)];
@@ -1070,14 +1058,28 @@ module top_level_module(
         end
     endgenerate
 
+    //Data valid for intan data
+    reg [31:0] intan_last_read;
+    reg [31:0] data_has_been_valid;
+    always @(posedge clk_sys) begin
+        if (sys_rst) begin
+            intan_last_read <= 32'h0;
+            data_has_been_valid = 32'h0;
+        end
+        //Should I replace the 0s with Ks to iterate through all of the AD5453 SPIs?
+        else if (fifo_data_valid[0]) begin
+            intan_last_read <= intan_results[0];
+            data_has_been_valid = 32'h55555555;
+        end
+    end
 
     wire intan_last_read_wire;
     assign intan_last_read_wire = intan_last_read;
 
     // Four wire outs for debug of filter loading. TODO: generally unecessary now. 
      okWireOut      wo06 (.okHE(okHE), .okEH(okEHx[ 18*65 +: 65 ]), .ep_addr(`AD5453_COEFF_DEBUG_0), .ep_datain(intan_last_read_wire)); //I replaced filtsel with intan_last_read
-     okWireOut      wo07 (.okHE(okHE), .okEH(okEHx[ 19*65 +: 65 ]), .ep_addr(`AD5453_COEFF_DEBUG_1), .ep_datain(coeff_debug_out2[0]));
-     okWireOut      wo08 (.okHE(okHE), .okEH(okEHx[ 20*65 +: 65 ]), .ep_addr(`AD5453_COEFF_DEBUG_2), .ep_datain(coeff_debug_out1[1]));
+     okWireOut      wo07 (.okHE(okHE), .okEH(okEHx[ 19*65 +: 65 ]), .ep_addr(`AD5453_COEFF_DEBUG_1), .ep_datain(8'h22));
+     okWireOut      wo08 (.okHE(okHE), .okEH(okEHx[ 20*65 +: 65 ]), .ep_addr(`AD5453_COEFF_DEBUG_2), .ep_datain(data_has_been_valid));
      okWireOut      wo09 (.okHE(okHE), .okEH(okEHx[ 21*65 +: 65 ]), .ep_addr(`AD5453_COEFF_DEBUG_3), .ep_datain(coeff_debug_out2[1]));
 
     /* ----------------- END AD5453 ------------------------------------ */
