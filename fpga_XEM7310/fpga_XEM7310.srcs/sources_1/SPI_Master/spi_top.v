@@ -49,18 +49,10 @@ module spi_top
   wb_we_i, wb_stb_i, wb_cyc_i, wb_ack_o, wb_err_o, wb_int_o,
 
   // SPI signals
-  ss_pad_o, sclk_pad_o, mosi_pad_o, miso_pad_i, miso_b_pad_i
+  ss_pad_o, sclk_pad_o, mosi_pad_o, miso_pad_i
 );
 
-  //parameter Tp = 0;// this used to be Tp = 1
-  
-  /*
-  //added signals to allow the controller/state machine to determine if a one-shot measurement is taking place
-  output			  wire           [31:0] tx_spi_dat;
-  assign tx_spi_dat = rx;
-  output			  wire           [13:0] control_dat;
-  assign control_dat = ctrl;
-  //*/
+  parameter Tp = 1;
 
   // Wishbone signals
   input          wire                  wb_clk_i;         // master clock input
@@ -82,9 +74,7 @@ module spi_top
   output   wire                        sclk_pad_o;       // serial clock
   output   wire                        mosi_pad_o;       // master out slave in
   input    wire                        miso_pad_i;       // master in slave out
-  input    wire                        miso_b_pad_i;       // master in slave out
-
-                                                     
+                                                       
   reg                     [32-1:0] wb_dat_o;
   reg                              wb_ack_o;
   reg                              wb_int_o;
@@ -111,8 +101,6 @@ module spi_top
   wire                             neg_edge;         // recognize negedge of sclk
   wire                             last_bit;         // marks last character bit
   
-  wire         [`SPI_MAX_CHAR-1:0] rx_chan_b;               // Rx register for channel B -- (LJK ADS8686)
-
   // Address decoder
   assign spi_divider_sel = wb_cyc_i & wb_stb_i & (wb_adr_i[`SPI_OFS_BITS] == `SPI_DEVIDE);
   assign spi_ctrl_sel    = wb_cyc_i & wb_stb_i & (wb_adr_i[`SPI_OFS_BITS] == `SPI_CTRL);
@@ -123,7 +111,7 @@ module spi_top
   assign spi_ss_sel      = wb_cyc_i & wb_stb_i & (wb_adr_i[`SPI_OFS_BITS] == `SPI_SS);
   
   // Read from registers
-  always @(wb_adr_i or rx or ctrl or divider or ss or rx_chan_b)
+  always @(wb_adr_i or rx or ctrl or divider or ss)
   begin
     case (wb_adr_i[`SPI_OFS_BITS])
 `ifdef SPI_MAX_CHAR_128
@@ -132,21 +120,17 @@ module spi_top
       `SPI_RX_2:    wb_dat = rx[95:64];
       `SPI_RX_3:    wb_dat = {{128-`SPI_MAX_CHAR{1'b0}}, rx[`SPI_MAX_CHAR-1:96]};
 `else
-    `ifdef SPI_MAX_CHAR_64
-          `SPI_RX_0:    wb_dat = rx[31:0];
-          `SPI_RX_1:    wb_dat = {{64-`SPI_MAX_CHAR{1'b0}}, rx[`SPI_MAX_CHAR-1:32]};
-          `SPI_RX_2:    wb_dat = 32'b0;
-          `SPI_RX_3:    wb_dat = 32'b0;
-    `else
-          `ifdef SPI_CHAN_B
-              `SPI_RX_0:    wb_dat = {rx_chan_b[15:0], rx[15:0]}; // use as special case for including rx_chan_b
-          `else
-              `SPI_RX_0:    wb_dat = {{32-`SPI_MAX_CHAR{1'b0}}, rx[`SPI_MAX_CHAR-1:0]};
-          `endif    
-          `SPI_RX_1:    wb_dat = 32'b0;
-          `SPI_RX_2:    wb_dat = 32'b0;
-          `SPI_RX_3:    wb_dat = 32'b0;
-    `endif
+`ifdef SPI_MAX_CHAR_64
+      `SPI_RX_0:    wb_dat = rx[31:0];
+      `SPI_RX_1:    wb_dat = {{64-`SPI_MAX_CHAR{1'b0}}, rx[`SPI_MAX_CHAR-1:32]};
+      `SPI_RX_2:    wb_dat = 32'b0;
+      `SPI_RX_3:    wb_dat = 32'b0;
+`else
+      `SPI_RX_0:    wb_dat = {{32-`SPI_MAX_CHAR{1'b0}}, rx[`SPI_MAX_CHAR-1:0]};
+      `SPI_RX_1:    wb_dat = 32'b0;
+      `SPI_RX_2:    wb_dat = 32'b0;
+      `SPI_RX_3:    wb_dat = 32'b0;
+`endif
 `endif
       `SPI_CTRL:    wb_dat = {{32-`SPI_CTRL_BIT_NB{1'b0}}, ctrl};
       `SPI_DEVIDE:  wb_dat = {{32-`SPI_DIVIDER_LEN{1'b0}}, divider};
@@ -159,18 +143,18 @@ module spi_top
   always @(posedge wb_clk_i or posedge wb_rst_i)
   begin
     if (wb_rst_i)
-      wb_dat_o <= /*#Tp*/ 32'b0;
+      wb_dat_o <= #Tp 32'b0;
     else
-      wb_dat_o <= /*#Tp*/ wb_dat;
+      wb_dat_o <= #Tp wb_dat;
   end
   
   // Wb acknowledge
   always @(posedge wb_clk_i or posedge wb_rst_i)
   begin
     if (wb_rst_i)
-      wb_ack_o <= /*#Tp*/ 1'b0;
+      wb_ack_o <= #Tp 1'b0;
     else
-      wb_ack_o <= /*#Tp*/ wb_cyc_i & wb_stb_i & ~wb_ack_o;
+      wb_ack_o <= #Tp wb_cyc_i & wb_stb_i & ~wb_ack_o;
   end
   
   // Wb error
@@ -180,47 +164,47 @@ module spi_top
   always @(posedge wb_clk_i or posedge wb_rst_i)
   begin
     if (wb_rst_i)
-      wb_int_o <= /*#Tp*/ 1'b0;
+      wb_int_o <= #Tp 1'b0;
     else if (ie && tip && last_bit && pos_edge)
-      wb_int_o <= /*#Tp*/ 1'b1;
+      wb_int_o <= #Tp 1'b1;
     else if (wb_ack_o)
-      wb_int_o <= /*#Tp*/ 1'b0;
+      wb_int_o <= #Tp 1'b0;
   end
   
   // Divider register
   always @(posedge wb_clk_i or posedge wb_rst_i)
   begin
     if (wb_rst_i)
-        divider <= /*#Tp*/ {`SPI_DIVIDER_LEN{1'b0}};
+        divider <= #Tp {`SPI_DIVIDER_LEN{1'b0}};
     else if (spi_divider_sel && wb_we_i && !tip)
       begin
       `ifdef SPI_DIVIDER_LEN_8
         if (wb_sel_i[0])
-          divider <= /*#Tp*/ wb_dat_i[`SPI_DIVIDER_LEN-1:0];
+          divider <= #Tp wb_dat_i[`SPI_DIVIDER_LEN-1:0];
       `endif
       `ifdef SPI_DIVIDER_LEN_16
         if (wb_sel_i[0])
-          divider[7:0] <= /*#Tp*/ wb_dat_i[7:0];
+          divider[7:0] <= #Tp wb_dat_i[7:0];
         if (wb_sel_i[1])
-          divider[`SPI_DIVIDER_LEN-1:8] <= /*#Tp*/ wb_dat_i[`SPI_DIVIDER_LEN-1:8];
+          divider[`SPI_DIVIDER_LEN-1:8] <= #Tp wb_dat_i[`SPI_DIVIDER_LEN-1:8];
       `endif
       `ifdef SPI_DIVIDER_LEN_24
         if (wb_sel_i[0])
-          divider[7:0] <= /*#Tp*/ wb_dat_i[7:0];
+          divider[7:0] <= #Tp wb_dat_i[7:0];
         if (wb_sel_i[1])
-          divider[15:8] <= /*#Tp*/ wb_dat_i[15:8];
+          divider[15:8] <= #Tp wb_dat_i[15:8];
         if (wb_sel_i[2])
-          divider[`SPI_DIVIDER_LEN-1:16] <= /*#Tp*/ wb_dat_i[`SPI_DIVIDER_LEN-1:16];
+          divider[`SPI_DIVIDER_LEN-1:16] <= #Tp wb_dat_i[`SPI_DIVIDER_LEN-1:16];
       `endif
       `ifdef SPI_DIVIDER_LEN_32
         if (wb_sel_i[0])
-          divider[7:0] <= /*#Tp*/ wb_dat_i[7:0];
+          divider[7:0] <= #Tp wb_dat_i[7:0];
         if (wb_sel_i[1])
-          divider[15:8] <= /*#Tp*/ wb_dat_i[15:8];
+          divider[15:8] <= #Tp wb_dat_i[15:8];
         if (wb_sel_i[2])
-          divider[23:16] <= /*#Tp*/ wb_dat_i[23:16];
+          divider[23:16] <= #Tp wb_dat_i[23:16];
         if (wb_sel_i[3])
-          divider[`SPI_DIVIDER_LEN-1:24] <= /*#Tp*/ wb_dat_i[`SPI_DIVIDER_LEN-1:24];
+          divider[`SPI_DIVIDER_LEN-1:24] <= #Tp wb_dat_i[`SPI_DIVIDER_LEN-1:24];
       `endif
       end
   end
@@ -229,16 +213,16 @@ module spi_top
   always @(posedge wb_clk_i or posedge wb_rst_i)
   begin
     if (wb_rst_i)
-      ctrl <= /*#Tp*/ {`SPI_CTRL_BIT_NB{1'b0}};
+      ctrl <= #Tp {`SPI_CTRL_BIT_NB{1'b0}};
     else if(spi_ctrl_sel && wb_we_i && !tip)
       begin
         if (wb_sel_i[0])
-          ctrl[7:0] <= /*#Tp*/ wb_dat_i[7:0] | {7'b0, ctrl[0]};
+          ctrl[7:0] <= #Tp wb_dat_i[7:0] | {7'b0, ctrl[0]};
         if (wb_sel_i[1])
-          ctrl[`SPI_CTRL_BIT_NB-1:8] <= /*#Tp*/ wb_dat_i[`SPI_CTRL_BIT_NB-1:8];
+          ctrl[`SPI_CTRL_BIT_NB-1:8] <= #Tp wb_dat_i[`SPI_CTRL_BIT_NB-1:8];
       end
     else if(tip && last_bit && pos_edge)
-      ctrl[`SPI_CTRL_GO] <= /*#Tp*/ 1'b0;
+      ctrl[`SPI_CTRL_GO] <= #Tp 1'b0;
   end
   
   assign rx_negedge = ctrl[`SPI_CTRL_RX_NEGEDGE];
@@ -253,36 +237,36 @@ module spi_top
   always @(posedge wb_clk_i or posedge wb_rst_i)
   begin
     if (wb_rst_i)
-      ss <= /*#Tp*/ {`SPI_SS_NB{1'b0}};
+      ss <= #Tp {`SPI_SS_NB{1'b0}};
     else if(spi_ss_sel && wb_we_i && !tip)
       begin
       `ifdef SPI_SS_NB_8
         if (wb_sel_i[0])
-          ss <= /*#Tp*/ wb_dat_i[`SPI_SS_NB-1:0];
+          ss <= #Tp wb_dat_i[`SPI_SS_NB-1:0];
       `endif
       `ifdef SPI_SS_NB_16
         if (wb_sel_i[0])
-          ss[7:0] <= /*#Tp*/ wb_dat_i[7:0];
+          ss[7:0] <= #Tp wb_dat_i[7:0];
         if (wb_sel_i[1])
-          ss[`SPI_SS_NB-1:8] <= /*#Tp*/ wb_dat_i[`SPI_SS_NB-1:8];
+          ss[`SPI_SS_NB-1:8] <= #Tp wb_dat_i[`SPI_SS_NB-1:8];
       `endif
       `ifdef SPI_SS_NB_24
         if (wb_sel_i[0])
-          ss[7:0] <= /*#Tp*/ wb_dat_i[7:0];
+          ss[7:0] <= #Tp wb_dat_i[7:0];
         if (wb_sel_i[1])
-          ss[15:8] <= /*#Tp*/ wb_dat_i[15:8];
+          ss[15:8] <= #Tp wb_dat_i[15:8];
         if (wb_sel_i[2])
-          ss[`SPI_SS_NB-1:16] <= /*#Tp*/ wb_dat_i[`SPI_SS_NB-1:16];
+          ss[`SPI_SS_NB-1:16] <= #Tp wb_dat_i[`SPI_SS_NB-1:16];
       `endif
       `ifdef SPI_SS_NB_32
         if (wb_sel_i[0])
-          ss[7:0] <= /*#Tp*/ wb_dat_i[7:0];
+          ss[7:0] <= #Tp wb_dat_i[7:0];
         if (wb_sel_i[1])
-          ss[15:8] <= /*#Tp*/ wb_dat_i[15:8];
+          ss[15:8] <= #Tp wb_dat_i[15:8];
         if (wb_sel_i[2])
-          ss[23:16] <= /*#Tp*/ wb_dat_i[23:16];
+          ss[23:16] <= #Tp wb_dat_i[23:16];
         if (wb_sel_i[3])
-          ss[`SPI_SS_NB-1:24] <= /*#Tp*/ wb_dat_i[`SPI_SS_NB-1:24];
+          ss[`SPI_SS_NB-1:24] <= #Tp wb_dat_i[`SPI_SS_NB-1:24];
       `endif
       end
   end
@@ -300,12 +284,5 @@ module spi_top
                    .tip(tip), .last(last_bit), 
                    .p_in(wb_dat_i), .p_out(rx), 
                    .s_clk(sclk_pad_o), .s_in(miso_pad_i), .s_out(mosi_pad_o));
-                   
-    spi_shift shift_chan2 (.clk(wb_clk_i), .rst(wb_rst_i), .len(char_len[`SPI_CHAR_LEN_BITS-1:0]),
-                                    .latch(spi_tx_sel[3:0] & {4{wb_we_i}}), .byte_sel(wb_sel_i), .lsb(lsb), 
-                                    .go(go), .pos_edge(pos_edge), .neg_edge(neg_edge), 
-                                    .rx_negedge(rx_negedge), .tx_negedge(tx_negedge),
-                                    .tip(), .last(), 
-                                    .p_in(wb_dat_i), .p_out(rx_chan_b), 
-                                    .s_clk(sclk_pad_o), .s_in(miso_b_pad_i), .s_out());
 endmodule
+  

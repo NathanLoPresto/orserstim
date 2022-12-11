@@ -115,6 +115,9 @@ module read_fifo_to_spi_cmd #(parameter ADDR = 0)(
 	 parameter Transfer_0 = 5'b01100; //states to initiate SPI transfer
 	 parameter Transfer_1 = 5'b01101;
 	 parameter Transfer_2 = 5'b01110;
+     parameter Read_0 = 5'b10010;
+	 parameter Read_1 = 5'b10011;
+	 parameter Read_2 = 5'b10100;
 	 parameter IDLE_0 = 5'b10001; //states to take advantage of "idle" time during SPI transfer, reading the next word from AD796x FIFO
 	 
 	 
@@ -156,8 +159,18 @@ module read_fifo_to_spi_cmd #(parameter ADDR = 0)(
 					nextstate = INIT_8;
 				end
 				INIT_8: begin
-						nextstate = Convert_0;
+					nextstate = Convert_0;
 				end
+                Read_0: begin // wait for int_o
+                    if (int_o) nextstate = Read_1;
+                    else nextstate = Read_0;
+                end
+                Read_1: begin
+                    nextstate = Read_2;
+                end
+                Read_2: begin
+                    nextstate = IDLE_0; // go to idel once finished with reading 
+                end                
 				Convert_0: begin
 					nextstate = Convert_1;
 				end
@@ -173,14 +186,14 @@ module read_fifo_to_spi_cmd #(parameter ADDR = 0)(
 				Transfer_1: begin
 					nextstate = Transfer_2;
 				end
-				Transfer_2: begin
-					nextstate = IDLE_0;
-				end
+                Transfer_2: begin
+                    nextstate = Read_0;
+                end
 				IDLE_0: begin
 				    if(newRegVal && int_o)begin
 				        nextstate = INIT_0; // go back to programming the CLK divider register and the control register.
-				    end				    
-                    else if(int_o & data_rdy)begin
+				    end
+                    else if(data_rdy)begin // the Read state waits for int_o now 
                         nextstate = Convert_1;
                         //nextstate = Convert_0;
                     end
@@ -209,14 +222,18 @@ module read_fifo_to_spi_cmd #(parameter ADDR = 0)(
 	       adr <= 8'h18;
        end
 	   else if(spi_load == 3'b011)begin
-	       cmd_word <= {2'h1, converted_cmd_dat};
+	       cmd_word <= {2'h100, converted_cmd_dat};
 	       adr <= 8'h0;
        end
 	   else if(spi_load == 3'b100)begin
 	       //cmd_word <= 34'h100003110;
-	       cmd_word <= {18'h10000, (ctrlValue + 9'b100000000)};
+	       cmd_word <= {18'h10000, (ctrlValue + 9'b100000000)}; // Go bit 
 	       adr <= 8'h10;
-       end   
+       end
+	   else if(spi_load == 3'b101)begin
+           cmd_word <= {34'h000000000}; // Wishbone read of Rx register 
+           adr <= 8'h00;
+       end             
 	 end
 	 
 	 reg [2:0] spi_load;
@@ -351,6 +368,29 @@ module read_fifo_to_spi_cmd #(parameter ADDR = 0)(
 					cmd_stb = 1'b0;
 					//ack = 1'b0;
 				end
+				Read_0: begin
+                    rd_en = 1'b1;
+                    //adr = 8'h10;
+                    spi_load = 3'b101;
+                    cmd_stb = 1'b0;
+                    //ack = 1'b0;
+                end
+				Read_1: begin
+                    rd_en = 1'b1;
+                    //adr = 8'h10;
+                    spi_load = 3'b101;
+                    //cmd_word = cmd_word;
+                    cmd_stb = 1'b1;
+                    //ack = 1'b0;
+                end
+				Read_2: begin
+                    rd_en = 1'b1;
+                    //adr = 8'h10;
+                    spi_load = 3'b101;
+                    //cmd_word = cmd_word;
+                    cmd_stb = 1'b0;
+                    //ack = 1'b0;
+                end                                				
 				IDLE_0: begin //idling while SPI transfers are in progress
                     if(int_o)begin//as soon as SPI transfer is complete, read in the next converted word
                         //rd_en = 1'b1;

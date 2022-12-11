@@ -96,9 +96,7 @@ module spi_fifo_driven #(parameter ADDR = 0) (
 	 wire ack_0;
 	 wire err_0;
 	 wire int_o_0;
-	 
-	 //wire [13:0] filter_out_modified;
-	 
+	 	 
 	 reg [31:0] spi_data; 
 	 reg data_ready_mux;
 
@@ -106,12 +104,6 @@ module spi_fifo_driven #(parameter ADDR = 0) (
          if (filter_sel == 1'b1) spi_data = {11'b0, filter_out_modified};
          else spi_data = data_i;
      end
-	 
-//	 reg [15:0] filter_data_rdy; // filter output data is registered when clk_enable is =1. Need a one-cycle delay for the data to be stable before input to the SPI command generator
-//	 always @(posedge clk) begin
-//	   filter_data_rdy[15] <= data_rdy_0;
-//	   filter_data_rdy[14:0] <= filter_data_rdy[15:1];
-//	 end
 	 
 	 wire filter_data_rdy;
      always @(*) begin
@@ -193,7 +185,8 @@ module spi_fifo_driven #(parameter ADDR = 0) (
 	 
 	 //Wishbone Master module for AD796x and AD5453
     hbexec Wishbone_Master_0 (
-    .i_clk(clk), .i_reset(rst), .i_cmd_stb(cmd_stb_0), .i_cmd_word(cmd_word_0), .o_cmd_busy(cmd_busy_0), .o_rsp_stb(rsp_stb_0),
+    .i_clk(clk), .i_reset(rst), .i_cmd_stb(cmd_stb_0), .i_cmd_word(cmd_word_0), 
+    .o_cmd_busy(cmd_busy_0), .o_rsp_stb(rsp_stb_0),
     .o_rsp_word(wb_cmd_dataout_0), .o_wb_cyc(cyc_0), .o_wb_stb(stb_0),
     .o_wb_we(we_0), .o_wb_addr(), .o_wb_data(dat_o_0), .o_wb_sel(sel_0),        
     .i_wb_ack(ack_0), .i_wb_stall(1'b0), .i_wb_err(err_0), .i_wb_data(dat_i_0)
@@ -210,7 +203,7 @@ module spi_fifo_driven #(parameter ADDR = 0) (
       .wb_adr_i(adr_0[4:0]), .wb_dat_i(dat_o_0), .wb_dat_o(dat_i_0), 
       .wb_sel_i(sel_0), .wb_we_i(we_0), .wb_stb_i(stb_0), 
       .wb_cyc_i(cyc_0), .wb_ack_o(ack_0), .wb_err_o(err_0), .wb_int_o(int_o_0),
-      .ss_pad_o(ss_0), .sclk_pad_o(sclk_0), .mosi_pad_o(mosi_0), .miso_pad_i(miso_0), .miso_b_pad_i(1'b0)
+      .ss_pad_o(ss_0), .sclk_pad_o(sclk_0), .mosi_pad_o(mosi_0), .miso_pad_i(miso_0)
     );
      
 endmodule

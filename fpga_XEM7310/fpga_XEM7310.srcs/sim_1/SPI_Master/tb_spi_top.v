@@ -65,38 +65,52 @@ module tb_spi_top;
 	reg [23:0] filter_in; // expand data length
 	wire data_out_ready;
 
+    wire ss;
+    wire sclk; 
+    wire mosi;
+    reg miso;
+    
+    wire intan_data_valid;
+    wire [31:0] intan_out;
+
+    parameter CREG = 32'h40003020;
+
 	// Instantiate the Unit Under Test (UUT)
 	spi_fifo_driven #(.ADDR(8'h15)) uut (
 		.clk(clk),
 		.fifoclk(fifoclk),
 		.rst(rst), 
-		//.ep_dataout(ep_dataout), 
-		//.trigger(trigger), 
-		//.hostinterrupt(hostinterrupt), 
-		//.readFifo(readFifo),
-		//.rstFifo(rstFifo),
-		//.dout(dout),
-		//.lastWrite(lastWrite),
-		//.ep_ready(ep_ready),
-		//.slow_pulse(slow_pulse),
 		.data_rdy_0(cmd_data_rdy),
-		.data_i(cmd_in),
+		.ss_0(ss),
+        .sclk_0(sclk),
+        .mosi_0(mosi),
+        .miso_0(1'b1),
+		.data_i(32'hffff_ffff),		
+		// Control register from OK register bridge
 		.ep_write(ep_write),
 		.ep_address(ep_address),
 		.ep_dataout_coeff(ep_dataout_coeff),
-		.filter_sel(1'b1),  //LJK: enable filter select
+		//data is valid coming in from intan
+        .data_valid(intan_data_valid),
+        //32-bit Miso signal from the intan chip
+        .intan_out(intan_out),        
+        .rd_en_0(),
+        .regTrigger(regTrigger),
+		.filter_sel(1'b0),  //LJK: enable filter select
 		//.en_period(en_period),
 		//.ddr3_rst(ddr3_rst),
 		//.clk_en(clk_en),
+        .coeff_debug_out1(),
+        .coeff_debug_out2(),
+        .dac_val_out(),
 		.data_out_ready(data_out_ready),
-		.regTrigger(regTrigger),
 		.filter_out_modified(filter_out_modified),
 		.filter_data_i(filter_in),
 		.data_rdy_0_filt(data_rdy),
 		.downsample_en(1'b0),
 		.sum_en(1'b0)
 	);
-	
+		
 	// Generate clock
 	always #2.5 clk = ~clk;//now 200 MHz sys clock
 	
@@ -104,13 +118,13 @@ module tb_spi_top;
 	always #4.96 fifoclk = ~fifoclk;
 	
 	//simulating data ready from ad796x.v
-	reg [7:0] count_enable = 8'b0;
-	reg [7:0] count_enable_1 = 8'b0;
-    reg [7:0] count = 8'b0;	
+	reg [7:0] count_enable = 16'b0;
+	reg [7:0] count_enable_1 = 16'b0;
+    reg [7:0] count = 16'b0;	
 	
 	//reg data_rdy = 1'b0;
     always@(posedge clk)begin
-        if(count_enable == 8'd39)begin
+        if(count_enable == 8'd199)begin
             data_rdy = 1'b1;
             count_enable = 5'b0;
         end
@@ -121,6 +135,8 @@ module tb_spi_top;
     end
     always@(posedge clk)begin
         if(count_enable_1 == 8'd79)begin
+//        if(count_enable_1 == 16'd800)begin
+
             cmd_data_rdy = 1'b1;
             count_enable_1 = 8'b0;
         end
@@ -172,6 +188,7 @@ module tb_spi_top;
 		trigger = 1'b0;
 		regTrigger = 1'b0;
 		filter_in = 16'h0;
+		cmd_in = 16'h0;
 		ep_write = 1'b0;
 		ep_address = 32'h0;
 		ep_dataout_coeff = 32'h0;
@@ -194,28 +211,31 @@ module tb_spi_top;
 		#25;
       trigger = 1'b0;
       ep_write = 1'b1;
-      ep_address = 32'h00000000 + 8'h19;
-      ep_dataout_coeff = 32'h009e1586;
-      //ep_dataout_coeff = 32'h7fff_ffff;
+      ep_address = 32'h00000000 + 8'h19; // + h19 to write the filter coefficients 
+//      ep_dataout_coeff = 32'h009e1586;
+      ep_dataout_coeff = 32'h7fff_ffff;
       #10;
       ep_address = 32'h00000001 + 8'h19;
       ep_dataout_coeff = 32'h20000000;
+//      ep_dataout_coeff = 32'haebe76c9;
       #10;
       ep_address = 32'h00000002 + 8'h19;
-      ep_dataout_coeff = 32'h40000000;
-      //ep_dataout_coeff = 32'h00000000;
+//      ep_dataout_coeff = 32'h40000000;
+      ep_dataout_coeff = 32'h00000000;
+//      ep_dataout_coeff = 32'h4ebe76c9;
       #10;
       ep_address = 32'h00000003 + 8'h19;
-      ep_dataout_coeff = 32'h20000000;
-      //ep_dataout_coeff = 32'h00000000;
+//      ep_dataout_coeff = 32'h20000000;
+      ep_dataout_coeff = 32'h00000000;
       #10;
       ep_address = 32'h00000004 + 8'h19;
-      ep_dataout_coeff = 32'hbce3be9a;
-      //ep_dataout_coeff = 32'h00000000;
+//      ep_dataout_coeff = 32'hbce3be9a;
+      ep_dataout_coeff = 32'h00000000;
+//      ep_dataout_coeff = 32'hc0000000;
       #10;
       ep_address = 32'h00000005 + 8'h19;
-      ep_dataout_coeff = 32'h12f3f6b0;
-      //ep_dataout_coeff = 32'h00000000;
+//      ep_dataout_coeff = 32'h12f3f6b0;
+      ep_dataout_coeff = 32'h00000000;
       #10;
       ep_address = 32'h00000008 + 8'h19;
       ep_dataout_coeff = 32'h7fffffff;
@@ -224,64 +244,76 @@ module tb_spi_top;
       ep_dataout_coeff = 32'h20000000;
       #10;
       ep_address = 32'h0000000a + 8'h19;
-      ep_dataout_coeff = 32'h40000000;
-      //ep_dataout_coeff = 32'h00000000;
+//      ep_dataout_coeff = 32'h40000000;
+      ep_dataout_coeff = 32'h00000000;
       #10;
       ep_address = 32'h0000000b + 8'h19;
-      ep_dataout_coeff = 32'h20000000;
-      //ep_dataout_coeff = 32'h00000000;
+//      ep_dataout_coeff = 32'h20000000;
+      ep_dataout_coeff = 32'h00000000;
       #10;
       ep_address = 32'h0000000c + 8'h19;
-      ep_dataout_coeff = 32'hab762783;
-      //ep_dataout_coeff = 32'h00000000;
+//      ep_dataout_coeff = 32'hab762783;
+      ep_dataout_coeff = 32'h00000000;
       #10;
       ep_address = 32'h0000000d + 8'h19;
-      ep_dataout_coeff = 32'h287ecada;
-      //ep_dataout_coeff = 32'h00000000;
+//      ep_dataout_coeff = 32'h287ecada;
+      ep_dataout_coeff = 32'h00000000;
       #10;
       ep_address = 32'h00000007 + 8'h19;
       ep_dataout_coeff = 32'h7fffffff;
       #10;
       ep_address = 32'h0000000f + 8'h19;
-      ep_dataout_coeff = 32'h00000800;
+      ep_dataout_coeff = 32'h00002200;
       #10;
       ep_write = 1'b0;
       #5;
-      ep_dataout = 32'h80000051;//divide register address
+      ep_dataout = 32'h80000051;//
 	  #10;
       trigger = 1'b1;
       #10;
       trigger = 1'b0;
       #40;
       trigger = 1'b1;
-      ep_dataout = 32'h40000003;
+      ep_dataout = 32'h40000002;
       #10;
       trigger = 1'b0;
       #40;
       ep_dataout = 32'h80000001;//tx register 1 address
       trigger = 1'b1;
       #10;
+      trigger = 1'b0;
+      #20
       ep_write = 1'b1;
-      ep_address = 32'h80000010;
-      ep_dataout_coeff = 32'h00003410;
+      //ep_address = 32'h80000010;
+      ep_address = 32'h15;
+      //ep_dataout_coeff = 32'h00003410; 
+      ep_dataout_coeff = 32'h00003020;  // change for Orser stim
+      #20;
+      ep_address = 32'h16;
+      //ep_dataout_coeff = 32'h00003410; 
+      ep_dataout_coeff = 32'h00000001;  // change for Orser stim
+      #10
+      ep_write = 1'b0;
       trigger = 1'b0;
       #10;
-      ep_write = 1'b0;
       regTrigger = 1'b1;
       #5;
       regTrigger = 1'b0;
+      ep_write = 1'b0;
+
       #25;
       trigger = 1'b1;
       ep_dataout = 32'h40008aa5;
       #10;
       trigger = 1'b0;
       #40;
-      ep_dataout = 32'h80000041;//ctrl register address
+      ep_dataout = 32'h80000041;
       trigger = 1'b1;
       #10;
       trigger = 1'b0;
       #40;
-      ep_dataout = 32'h40003610;
+      // ep_dataout = 32'h40003610;
+      ep_dataout = 32'h40003020;
       trigger = 1'b1;
       #10;
       trigger = 1'b0;
@@ -301,7 +333,7 @@ module tb_spi_top;
       #10;
       trigger = 1'b0;
       #40;
-      ep_dataout = 32'h40003710;
+      ep_dataout = CREG;
       trigger = 1'b1;
       #10;
       trigger = 1'b0;
@@ -323,7 +355,7 @@ module tb_spi_top;
       #10;
       trigger = 1'b0;
       #40;
-      ep_dataout = 32'h40003710;
+      ep_dataout = CREG;
       trigger = 1'b1;
       #10;
       trigger = 1'b0;
@@ -338,7 +370,7 @@ module tb_spi_top;
       #10;
       trigger = 1'b0;
       #40;
-      ep_dataout = 32'h40003710;
+      ep_dataout = CREG;
       trigger = 1'b1;
       #10;
       trigger = 1'b0;
@@ -371,7 +403,7 @@ module tb_spi_top;
 				#10;
 				trigger = 1'b0;
 				#40;
-				ep_dataout = 32'h40003710;
+				ep_dataout = CREG;
 				trigger = 1'b1;
 				#10;
 				trigger = 1'b0;
@@ -392,7 +424,7 @@ module tb_spi_top;
 				#10;
 				trigger = 1'b0;
 				#40;
-				ep_dataout = 32'h40003710;
+				ep_dataout = CREG;
 				trigger = 1'b1;
 				#10;
 				trigger = 1'b0;
@@ -401,7 +433,7 @@ module tb_spi_top;
 		readFifo = 1'b1;
 		#1350;
 		readFifo = 1'b0;
-		#20;
+		#200000000;
 		$fclose(FileID_1);
 		$fclose(FileID);
 		$finish;
