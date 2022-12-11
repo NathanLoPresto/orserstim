@@ -195,7 +195,7 @@ module spi_fifo_driven #(parameter ADDR = 0) (
     //Data valid bit on 33rd bit of wb_cmd_dataout
     assign intan_out = wb_cmd_dataout_0[31:0];
     assign data_valid = (!wb_cmd_dataout_0[32] && !wb_cmd_dataout_0[33] && !rsp_stb_0);
-    
+
     //SPI master core for AD796x and AD5453
     //Miso results brought up to top level
     spi_top i_spi_top_0 (
