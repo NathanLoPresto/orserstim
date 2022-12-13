@@ -34,6 +34,8 @@ def emergencyInterrupt():
 if __name__ == "__main__":
     createYaml() #Creates the .yaml file in the .pyripherals folder 
 
+
+    #TODO: Are lines 40-61 necessary?
     # The boards.py file is located in the covg_fpga folder so we need to find that folder. If it is not above the current directory, the program fails.
     covg_fpga_path = os.getcwd()
     for i in range(15):
@@ -72,6 +74,7 @@ if __name__ == "__main__":
     #Initialize a daq object, containing DAC, DDR etc. objects
     daq = Daq(f)
 
+    #TODO: Do I only need one DAC?
     # fast DACs -- only use to set SPI controller data source to DDR and disable filters
     for i in [0,1,2,3,4,5]:
         daq.DAC[i].filter_select(operation="clear")
@@ -99,10 +102,11 @@ if __name__ == "__main__":
     ad7961s[0].reset_wire(0)
     time.sleep(1)
 
-    # changing the length of trasnfer to 32-bit
+    # changing the length of transfer to 32-bit
     daq.DAC[0].set_ctrl_reg(0x3020)
     daq.DAC[0].filter_select(operation="clear")
 
+    #TODO: reimplement this with the stim setup commands
     '''
     #STIM SETUP
     for x in range(len(STIM_SETUP)):
@@ -122,8 +126,7 @@ if __name__ == "__main__":
 
     print("SpeedVar is: " + str(SpeedVar) + " and the finalSpeed is: " + str(finalSpeed))
     
-    #try decimal 8/10
-
+    #try decimal 8/10, this will eventually be taken from SpeedVar
     daq.DAC[0].set_spi_sclk_divide(50)
 
     attributes = setAttributes(magnitude, electrodesStimming, polarities, RecoveryVar)
@@ -132,6 +135,8 @@ if __name__ == "__main__":
     for x in range(len(attributes)):
         daq.DAC[0].write(int(attributes[x], 16))
     '''
+
+    #Keep this for when host-driven setup is written
     for i in range(6):
         daq.DAC[i].set_data_mux("DDR")
 
@@ -140,12 +145,14 @@ if __name__ == "__main__":
 
     #commandStructure = make_command_structure(electrodesStimming, polarities, channelsToConvert, pulseWidth, RecoveryVar)
 
+    #TODO: add a function to split command structure into 16- bit increments, and write to daq.data arrays
     #newCommandStructure = np.tile(commandStructure,len(daq.ddr.data_arrays)//len(commandStructure) )
     #extraCommands = len(daq.ddr.data_arrays[0])-len(newCommandStructure)
     
     daq.ddr.data_arrays[1] = np.ones(int(len(daq.ddr.data_arrays[0])), dtype = np.uint16) * 0xc0fb
     daq.ddr.data_arrays[0] = np.ones(int(len(daq.ddr.data_arrays[0])), dtype = np.uint16) * 0x0000
 
+    #TODO: Check if this needs to be cycled through
     for i in [0,1,2,3,4,5]:
         daq.DAC[i].filter_select(operation="clear")
         daq.DAC[i].set_data_mux("DDR")
@@ -169,7 +176,7 @@ if __name__ == "__main__":
     daq.ddr.reset_mig_interface()
     daq.ddr.set_adc_dac_simultaneous() 
 
-    #Starting the tests:
+#TODO: Change this into sample(), a single snapshot of the miso results, updating the plot and data
 def run_test(repeat=False, num_repeats=8, blk_multiples=40, PLT=False, KEEP_DAC_GOING=False):
 
     if repeat:  # to repeat data capture without rewriting the DAC data
@@ -194,6 +201,7 @@ def run_test(repeat=False, num_repeats=8, blk_multiples=40, PLT=False, KEEP_DAC_
                             # until the FIFOs are reenable with ddr_write_finish()
         time.sleep(0.01)
 
+    #TODO: take out the file-oriented nature of runtest
     file_name = 'test'
     idx = 0
 
