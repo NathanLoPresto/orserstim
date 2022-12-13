@@ -32,7 +32,7 @@ for i in range(15):
         break
     else:
         # If we aren't in covg_fpga, move up a folder and check again
-        covg_fpga_path = os.path.dirname(covg_fpga_path)
+        boards_path = os.path.dirname(covg_fpga_path)
 sys.path.append(boards_path)
 
 
@@ -139,6 +139,9 @@ def run_test(repeat=False, num_repeats=8, blk_multiples=40, PLT=False, KEEP_DAC_
 
     # saves data to a file; returns to the workspace the deswizzled DDR data of the last repeat
     # ddr.save_data calls:   set_adc_read()  # enable data into the ADC reading FIFO
+
+    ddr.parameters= {"data_version": ddr.data_version}
+
     chan_data_one_repeat = ddr.save_data(data_dir, file_name.format(idx) + '.h5', num_repeats = num_repeats,
                             blk_multiples=blk_multiples) # blk multiples must be a multiple of 10
 

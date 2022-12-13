@@ -39,7 +39,7 @@ for i in range(15):
         break
     else:
         # If we aren't in covg_fpga, move up a folder and check again
-        covg_fpga_path = os.path.dirname(covg_fpga_path)
+        boards_path= os.path.dirname(covg_fpga_path)
 sys.path.append(boards_path)
 
 
@@ -83,6 +83,7 @@ root_logger.addHandler(handler)
 pwr_setup = "3dual"
 dc_num = 0  # the Daughter-card channel under test. Order on board from L to R: 1,0,2,3
 
+'''
 # -------- power supplies -----------
 dc_pwr, dc_pwr2 = open_rigol_supply(setup=pwr_setup)
 if pwr_setup == "3dual":
@@ -117,7 +118,7 @@ fg.set("freq", fg_freq)
 fg.set("output", "ON")
 
 atexit.register(fg.set, "output", "OFF")
-
+'''
 # Initialize FPGA
 f = FPGA()
 f.init_device()
@@ -306,6 +307,8 @@ if REPEAT:  # to repeat data capture without rewriting the DAC data
 
     ddr_write_finish()
     time.sleep(0.01)
+
+ddr.parameters= {"data_version": daq.ddr.data_version}
 
 # saves data to a file; returns to teh workspace the deswizzled DDR data of the last repeat
 chan_data_one_repeat = ddr.save_data(data_dir, file_name.format(idx) + '.h5', num_repeats = 8,

@@ -124,7 +124,7 @@ if __name__ == "__main__":
     
     #try decimal 8/10
 
-    daq.DAC[0].set_spi_sclk_divide(2)
+    daq.DAC[0].set_spi_sclk_divide(50)
 
     attributes = setAttributes(magnitude, electrodesStimming, polarities, RecoveryVar)
     '''
