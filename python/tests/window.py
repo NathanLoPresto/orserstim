@@ -253,3 +253,23 @@ def createYaml():
     line5= "registers_path: C:/Users/" + username + "/pyripherals/Registers.xlsx\n"
     f.write(line1+line2+line3+line4+line5)
     f.close
+
+
+#Splits the command structure into the arrays needed for dataArrays 1 and dataArrays 0
+def splitCommandsToDataArrays(commandStructure, dataArrayLength):
+    commandTop16 = []
+    commandBottom16 = []
+    for x in commandStructure:
+        commandTop16.append(x>>16)
+        bottom = x&0xffff
+        commandBottom16.append(bottom)
+    newArray0 = np.tile(commandBottom16,dataArrayLength//len(commandStructure))
+    newArray1 = np.tile(commandTop16,dataArrayLength//len(commandStructure))
+
+    extraCommands = dataArrayLength-len(newArray0)
+
+    for x in range (extraCommands):
+        newArray1 = np.append(newArray1, 0x0000)
+        newArray0 = np.append(newArray0, 0x0000)
+
+    return newArray0, newArray1

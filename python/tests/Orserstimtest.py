@@ -140,17 +140,9 @@ if __name__ == "__main__":
     for i in range(6):
         daq.DAC[i].set_data_mux("DDR")
 
-    #numpy.tile used?
-    #split into 16 bits each, tile into data arrays 1 and data arrays 0
+    commandStructure = make_command_structure(electrodesStimming, polarities, channelsToConvert, pulseWidth, RecoveryVar)
 
-    #commandStructure = make_command_structure(electrodesStimming, polarities, channelsToConvert, pulseWidth, RecoveryVar)
-
-    #TODO: add a function to split command structure into 16- bit increments, and write to daq.data arrays
-    #newCommandStructure = np.tile(commandStructure,len(daq.ddr.data_arrays)//len(commandStructure) )
-    #extraCommands = len(daq.ddr.data_arrays[0])-len(newCommandStructure)
-    
-    daq.ddr.data_arrays[1] = np.ones(int(len(daq.ddr.data_arrays[0])), dtype = np.uint16) * 0xc0fb
-    daq.ddr.data_arrays[0] = np.ones(int(len(daq.ddr.data_arrays[0])), dtype = np.uint16) * 0x0000
+    daq.ddr.data_arrays[0], daq.ddr.data_arrays[1] = splitCommandsToDataArrays(commandStructure, len(daq.ddr.data_arrays[0]))
 
     #TODO: Check if this needs to be cycled through
     for i in [0,1,2,3,4,5]:
@@ -227,14 +219,6 @@ chan_data, adc_data, dac_data, timestamp = run_test(num_repeats = 8, PLT=True)
 time.sleep(1)
 chan_data, adc_data, dac_data, timestamp = run_test(num_repeats = 8, PLT=True)
 
-
-#adc_data[0] + (adc_data[1] <<16)
-
-while (1):
-    time.sleep(.5)
-    print(f.read_wire(0x2a))
-    print(f.read_wire(0x2b))
-    print(f.read_wire(0x2c))
 
 
 
