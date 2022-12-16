@@ -16,8 +16,10 @@ from time import sleep
 import tkinter as tk
 from window import *
 import pandas as pd
+import platform
 import numpy as np
 import datetime
+import json
 import logging
 import atexit
 import time
@@ -29,6 +31,29 @@ def emergencyInterrupt():
     daq.ddr.write_buf(bytearray(0x00000000))
     print("Executing emergency interrupt")
     exit()
+
+
+#dumps the metadata from the experiment into a json file for future use
+def getMetaData():
+    metaDict = {
+        "Date": "{:%d, %b %Y}".format(datetime.date.today()),
+        "OS":   platform.system(),
+        "OS Version": platform.version(),
+        "Pulsewidth(us)": pulseWidth,
+        "Stim Magnitude(uA)": magnitude,
+        "Recovery Ratio" : RecoveryVar,
+        "Anodes": electrodesStimming,
+        "Cathodes": polarities,
+        "Sampled Channels": channelsToConvert
+        }
+    currentDate = datetime.datetime.now()                          # Grabbing the current date and time
+    dateString = currentDate.strftime("/Users/lopr5624/JSONData/%B%Y%A%I%M%S%p") 
+    f = open(dateString + ".json", "x")                              # Creating a .json file with the datetime name
+    f.close()    
+    outfile = open(dateString + ".json", "w")                        # Opening json file for data dump
+    json.dump(metaDict, outfile, indent =6) # Writing data to disk
+    outfile.close()         
+    return metaDict
 
 #MAIN LOOP#
 if __name__ == "__main__":
