@@ -245,8 +245,8 @@ time.sleep(1)
 chan_data, adc_data, dac_data, timestamp = run_test(num_repeats = 8, PLT=True)
 
 
-
-
-
-
+app= QtWidgets.QApplication(sys.argv) # Instantiation of Qt app
+obj = MainWindow(channelsToConvert)                    # Instantiation of the window
+obj.show()                            # Draw window
+app.exec_()                           # Execute the application
 

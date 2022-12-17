@@ -273,3 +273,88 @@ def splitCommandsToDataArrays(commandStructure, dataArrayLength):
         newArray0 = np.append(newArray0, 0x0000)
 
     return newArray0, newArray1
+
+#combines the 2, 16-bit miso results into a single 32 bit miso response
+def combine(lower15bits, higher16bits):
+    combinedArray = []
+    for x in range (len(lower15bits)):
+        addVal = (lower15bits+ (higher16bits<<16))
+        combinedArray.append(addVal)
+    return combinedArray
+
+# Sorts data into the type of MOSI transfer it came from
+def isConvert(data):
+    if data[0:8] == "ffff0000"or data[0:8] == "ffff0007" or data[0:8] == "fffffffe" or data[6:8] == "20":
+        return False # Write
+    else:
+        return True
+
+
+# Converts the low gain result of a channel into volts
+def convertLowGainToV(data):
+    data1 = (hex(data[2]))[2:]
+    data2 = (hex(data[3]))[2:]
+    if len(data1)<2:
+        data1 = "0" + data1
+    if len(data2)<2:
+        data2 = "0" + data2
+    finalString = data1 + data2
+    rawData = (int(finalString, 16))
+    return round((rawData-512)*-.01923, 4)
+
+# Converts high gain results into millivolts
+def convertHighGainTomv(data):
+    data1 = (hex(data[0]))[2:]
+    data2 = (hex(data[1]))[2:]
+    if len(data1)<2:
+        data1 = "0" + data1
+    if len(data2)<2:
+        data2 = "0" + data2
+    finalString = data1 + data2
+    rawData = (int(finalString, 16))
+    return round((rawData-32768)*.000000195, 4)
+
+##################################
+##########GRAPHING CLASS##########
+##################################
+class MainWindow(QtWidgets.QMainWindow):
+
+    def __init__(self,dataPointsToShow,*args, **kwargs):
+        super(MainWindow, self).__init__(*args, **kwargs)
+        
+        self.graphWidget = pg.PlotWidget()
+        self.setCentralWidget(self.graphWidget)
+        self.channelsList = [0]
+        
+        for x in range(channelsToConvert+1): # Creates a array for each channel in the channel list
+            self.channelsList.append(list(range(dataPointsToShow))) 
+        
+        self.channelsList.pop(0) # First channel in channel list is unusable
+        self.graphWidget.setBackground('w')
+        self.setWindowTitle("Channels")
+        self.data_lines = [0]*channelsToConvert # Make as many plotting lines as sampled channels
+        
+        for x in range(channelsToConvert): #Creates a new graphing line for each sampled channel
+            self.data_lines[x] =  self.graphWidget.plot(self.channelsList[0], self.channelsList[x+1], pen=(x,channelsToConvert+1))
+        
+        self.timer = QtCore.QTimer()
+        self.timer.timeout.connect(self.update_plot_data) # Calls "update_plot_data" continuously
+        self.timer.start()                                # Starts the QT timer
+        self.convertData = []                             # ConvertData holds the current conversion vals from the last cycle
+        self.mosiIterator =0                              # Iterated through each channel as converts come in 
+        self.dataPoint = []                               # The current results in the form [tim, ch1, ch2..]
+        self.beginTime = time.time()                      # Initializes the start time of the program
+        self.lastCycleStart = time.time()                           # Initializes the start of the last conversion cycle
+        self.lastCycleEnd = time.time()                              # Initializes the end of the last conversion cycle
+        
+    #Called by each MainWindow object by QTimer()
+    def update_plot_data(self):
+        #self.channelsList[0] holds all of the timestamps for the data
+        #self.channelsList 1-n hold the actual convert data to be added to the plot widget
+        self.channelsList[0] = time.time()
+        self.channelsList[1] = 12
+
+        #self.data_lines is the instance variable of the pg plot, update with timestamp and respective channel
+        for n in range(len(self.data_lines)):
+            self.data_lines[n].setData(self.channelsList[0], self.channelsList[1])
+        
