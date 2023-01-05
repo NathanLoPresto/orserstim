@@ -7,8 +7,9 @@ import datetime
 import numpy as np
 import os
 import getpass
+import math
 
-
+  
 ###CONSTANTS###
 STIM_SETUP = [0xe0ff0000, 0x80200000, 0x80210000, 0x8026ffff, 0x6a000000, 0x800000c7, 0x8001051a, 0x80020000, 0x80030080, 0x80040016, 0x80050017, 
 0x800600a8, 0x8007000a, 0x8008ffff, 0xa00a0000, 0xa00cffff, 0x802200e2, 0x802300aa, 0x80240080, 0x80254f00, 0xd0280000, 0x8020aaaa, 0x802100ff, 0xe0ff0000]
@@ -319,7 +320,7 @@ def convertHighGainTomv(data):
 ##################################
 class MainWindow(QtWidgets.QMainWindow):
 
-    def __init__(self,dataPointsToShow,*args, **kwargs):
+    def __init__(self,channelsToConvert,*args, **kwargs):
         super(MainWindow, self).__init__(*args, **kwargs)
         
         self.graphWidget = pg.PlotWidget()
@@ -327,7 +328,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.channelsList = [0]
         
         for x in range(channelsToConvert+1): # Creates a array for each channel in the channel list
-            self.channelsList.append(list(range(dataPointsToShow))) 
+            self.channelsList.append(list(range(1000))) 
         
         self.channelsList.pop(0) # First channel in channel list is unusable
         self.graphWidget.setBackground('w')
@@ -349,10 +350,13 @@ class MainWindow(QtWidgets.QMainWindow):
         
     #Called by each MainWindow object by QTimer()
     def update_plot_data(self):
+
         #self.channelsList[0] holds all of the timestamps for the data
         #self.channelsList 1-n hold the actual convert data to be added to the plot widget
-        self.channelsList[0] = time.time()
-        self.channelsList[1] = 12
+        self.channelsList[0].append(time.time())
+        self.channelsList[1].append(math.sin(time.time()))
+        self.channelsList[0].pop(0)
+        self.channelsList[1].pop(0)
 
         #self.data_lines is the instance variable of the pg plot, update with timestamp and respective channel
         for n in range(len(self.data_lines)):
