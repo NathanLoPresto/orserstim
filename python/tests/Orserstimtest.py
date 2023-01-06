@@ -3,45 +3,48 @@ This code runs through host driven SPI
 and DDR/FIFO driven SPI using the 
 pyripherals python package and XEM7310
 Abe Stroschein, ajstroschein@stthomas.edu
-Lucas Koerner, koerner.lucas@stthomas.edu
+Dr. Lucas Koerner, koerner.lucas@stthomas.edu
 Nathan LoPresto, lopr5624@stthomas.edu
 """
+
+#############
 ###IMPORTS###
-from pyripherals.peripherals.DDR3 import DDR3
+#############
+
+from pyripherals.peripherals.DDR3 import DDR3 
 from pyripherals.core import FPGA, Endpoint
-from pyripherals.utils import from_voltage
-from PyQt5 import QtWidgets, QtCore
-from ctypes import sizeof
-import pyqtgraph as pg
-from time import sleep
-import tkinter as tk
+#from pyripherals.utils import from_voltage
+from PyQt5 import QtWidgets, QtCore #Used for GUI window
+#from ctypes import sizeof 
+import pyqtgraph as pg #Used for graphing widget inside pyqt5 window
+#from time import sleep
+import tkinter as tk # Gui library for the UI, taking in inputs etc.
 import pandas as pd
 import numpy as np
 import binascii
 import platform
 import datetime
 import getpass
-import logging
+import logging # don't think this uses logging, should it?
 import atexit
 import json
 import time
+import math
 import sys
 import os
-import time
-import math
 
-
+###############
 ###CONSTANTS###
-STIM_SETUP = [0xe0ff0000, 0x80200000, 0x80210000, 0x8026ffff, 0x6a000000, 0x800000c7, 0x8001051a, 0x80020000, 0x80030080, 0x80040016, 0x80050017, 
-0x800600a8, 0x8007000a, 0x8008ffff, 0xa00a0000, 0xa00cffff, 0x802200e2, 0x802300aa, 0x80240080, 0x80254f00, 0xd0280000, 0x8020aaaa, 0x802100ff, 0xe0ff0000]
-FS = 5e6  # sampling frequency 
-dac80508_offset = 0x8000 # DAC offset
+###############
+
+STIM_SETUP = [0xe0ff0000, 0x80200000, 0x80210000, 0x8026ffff, 0x6a000000, 
+0x800000c7, 0x8001051a, 0x80020000, 0x80030080, 0x80040016, 0x80050017, 
+0x800600a8, 0x8007000a, 0x8008ffff, 0xa00a0000, 0xa00cffff, 0x802200e2, 
+0x802300aa, 0x80240080, 0x80254f00, 0xd0280000, 0x8020aaaa, 0x802100ff, 0xe0ff0000]
 currentDate = datetime.datetime.now() # Grabbing the current date and time
 dateString = currentDate.strftime("/home/orserpi/Downloads/JSONData/%B%Y%A%I%M%S%p") # Formatting date and time into .json file name
+#TODO: ChannelsToConvert is weird here, its also set my the GUI
 channelsToConvert = 4 #This should be set lower for the Orserstim project
-dac_offset = 0x1e00 
-cmd_signal = 212
-cc_signal = np.ones(4194304, dtype=np.uint32) * dac_offset
 
 #Runs the GUI to get data from the user about the experiment
 def runGUI():
@@ -54,18 +57,12 @@ def runGUI():
     #Arrays and data types to hold GUI variables and attributes
     CheckVars, StimVars, PosVars, MagWidget, Buttons, StimButtons, PosButtons, MagVars = [0]*16, [0]*16, [0]*16, [0]*16, [0]*16, [0]*16, [0]*16, [0]*16
     electrodesSampled, electrodesStimming, polarities = [0], [0], [0]
-    PulseVar = tk.StringVar()
-    MagVars = tk.StringVar()
-    RecoveryVar = tk.StringVar()
-    SpeedVar = tk.StringVar()
+    PulseVar, MagVars,RecoveryVar, SpeedVar = tk.StringVar(), tk.StringVar(), tk.StringVar(), tk.StringVar()
     lowVar = tk.IntVar()
     for x in range(16):
         CheckVars[x] = tk.IntVar()
-    for x in range(16):
         StimVars[x] = tk.IntVar()
-    for x in range(16):
         PosVars[x]  = tk.IntVar()
-    
     
     #Packing and initializing the elements in the TK app
     frame = tk.LabelFrame(top, text = "Select your electrodes to sample/plot", padx = 20, pady = 20)
@@ -117,12 +114,8 @@ def runGUI():
     for x in range(16):
         if CheckVars[x].get()==1:
             electrodesSampled.append(x)
-            
-    for x in range(16):
         if StimVars[x].get()==1:
             electrodesStimming.append(x)
-            
-    for x in range(16):
         if PosVars[x].get()==1:
             polarities.append(x)
             
@@ -160,6 +153,10 @@ def runGUI():
 
 #Here, the impedence check is run on the intan chip, results are printed out
 def fullTest():
+    #Would it be best to do this in host mode?
+    #If it's easy to get miso results in host mode, then this would be quick
+    # Link: https://github.com/heatherorser/OrserNeuroStimResearch/blob/master/Intan/SPI%20Systems%20Code/SPIDriverPythonCode/Spidev/GraphingGUI.py
+    
     print("doing an impedence check")
     
 # Self explanatory
@@ -558,9 +555,6 @@ def run_test(repeat=False, num_repeats=8, blk_multiples=40, PLT=False, KEEP_DAC_
     file_name = 'test'
     idx = 0
 
-    # saves data to a file; returns to the workspace the deswizzled DDR data of the last repeat
-    # ddr.save_data calls:   set_adc_read()  # enable data into the ADC reading FIFO
-
     daq.ddr.parameters= {"data_version": daq.ddr.data_version}
 
     chan_data_one_repeat = daq.ddr.save_data(data_dir, file_name.format(idx) + '.h5', num_repeats = num_repeats,
@@ -581,3 +575,16 @@ app= QtWidgets.QApplication(sys.argv) # Instantiation of Qt app
 obj = MainWindow(channelsToConvert)                    # Instantiation of the window
 obj.show()                            # Draw window
 app.exec_()                           # Execute the application
+
+#testing getting the data out of the drr, processing and graphing
+while (1):
+    chan_data, adc_data, dac_data, timestamp = run_test(num_repeats = 8, PLT=True)
+    together32 = combine(chan_data[0], chan_data[1])
+    justConverts = []
+    for x in together32:
+        if (isConvert(x)):
+            justConverts.append(convertLowGainToV(x))
+    #just convert results at this point, converted to low gain
+    print(justConverts[0:50])
+    time.sleep(5)
+
