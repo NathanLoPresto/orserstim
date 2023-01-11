@@ -297,7 +297,7 @@ def splitCommandsToDataArrays(commandStructure, dataArrayLength):
 def combine(lower15bits, higher16bits):
     combinedArray = []
     for x in range (len(lower15bits)):
-        addVal = (lower15bits+ (higher16bits<<16))
+        addVal = (lower15bits[x]+ (higher16bits[x]<<16))
         combinedArray.append(addVal)
     return combinedArray
 
@@ -368,7 +368,6 @@ class MainWindow(QtWidgets.QMainWindow):
     #Called by each MainWindow object by QTimer()
     def update_plot_data(self):
 
-        #chan_data, adc_data, dac_data, timestamp = run_test(num_repeats = 8, PLT=True)
 
         #self.channelsList[0] holds all of the timestamps for the data
         #self.channelsList 1-n hold the actual convert data to be added to the plot widget
@@ -448,7 +447,7 @@ if __name__ == "__main__":
     # Initialize FPGA
     f = FPGA()
     f.init_device()
-    sleep(2)
+    time.sleep(2)
     f.send_trig(eps["GP"]["SYSTEM_RESET"])  # system reset
 
     #Initialize a daq object, containing DAC, DDR etc. objects
@@ -507,7 +506,7 @@ if __name__ == "__main__":
     print("SpeedVar is: " + str(SpeedVar) + " and the finalSpeed is: " + str(finalSpeed))
     
     #try decimal 8/10, this will eventually be taken from SpeedVar
-    daq.DAC[0].set_spi_sclk_divide(50)
+    daq.DAC[0].set_spi_sclk_divide(10)
 
     attributes = setAttributes(magnitude, electrodesStimming, polarities, RecoveryVar)
     '''
@@ -570,21 +569,27 @@ def run_test(repeat=False, num_repeats=8, blk_multiples=40, PLT=False, KEEP_DAC_
 
 chan_data, adc_data, dac_data, timestamp = run_test(num_repeats = 8, PLT=True)
 time.sleep(1)
+chan_data, adc_data, dac_data, timestamp = run_test(num_repeats = 8, PLT=True)
+time.sleep(1)
+chan_data, adc_data, dac_data, timestamp = run_test(num_repeats = 8, PLT=True)
+time.sleep(1)
 
+for x in chan_data[0]:
+    print(x)
+    
 app= QtWidgets.QApplication(sys.argv) # Instantiation of Qt app
 obj = MainWindow(channelsToConvert)                    # Instantiation of the window
 obj.show()                            # Draw window
 app.exec_()                           # Execute the application
 
-#testing getting the data out of the drr, processing and graphing
-while (1):
-    chan_data, adc_data, dac_data, timestamp = run_test(num_repeats = 8, PLT=True)
-    together32 = combine(chan_data[0], chan_data[1])
-    justConverts = []
-    for x in together32:
-        if (isConvert(x)):
-            justConverts.append(convertLowGainToV(x))
-    #just convert results at this point, converted to low gain
-    print(justConverts[0:50])
-    time.sleep(5)
+current_data, _ = daq.ddr.read_adc()
+chan_data = daq.ddr.deswizzle(current_data)
+chan_stack = np.vstack(
+                (chan_data[0], chan_data[1], chan_data[2], chan_data[3]))
+
+combine_stack = combine(chan_stack[0],chan_stack[1])
+
+for x in combine_stack:
+    print(hex(x))
+
 
