@@ -332,6 +332,11 @@ def convertHighGainTomv(data):
     rawData = (int(finalString, 16))
     return round((rawData-32768)*.000000195, 4)
 
+#integer miso result to voltage
+def ToVoltage(data):
+    data = data>>16
+    return round((data-512)*-.01923,4 )
+
 ##################################
 ##########GRAPHING CLASS##########
 ##################################
@@ -368,11 +373,26 @@ class MainWindow(QtWidgets.QMainWindow):
     #Called by each MainWindow object by QTimer()
     def update_plot_data(self):
 
+        current_data, _ = daq.ddr.read_adc(blk_multiples = 4)
+        chan_data = daq.ddr.deswizzle(current_data)
+        chan_stack = np.vstack(
+                        (chan_data[0], chan_data[1], chan_data[2], chan_data[3]))
+
+        combine_stack = combine(chan_stack[0],chan_stack[1])
+
+        allConverts = []
+        for x in combine_stack:
+            if (isConvert(hex(x))):
+                allConverts.append(x)
+        allConverts = allConverts[0::5]
+        print(allConverts[0:5])
+        # convert into low or high gain
 
         #self.channelsList[0] holds all of the timestamps for the data
         #self.channelsList 1-n hold the actual convert data to be added to the plot widget
         self.channelsList[0].append(time.time())
-        self.channelsList[1].append(math.sin(time.time()))
+        #self.channelsList[1].append(math.sin(time.time()))
+        self.channelsList[1].append(ToVoltage(allConverts[0]))
         self.channelsList[0].pop(0)
         self.channelsList[1].pop(0)
 
@@ -452,6 +472,8 @@ if __name__ == "__main__":
 
     #Initialize a daq object, containing DAC, DDR etc. objects
     daq = Daq(f)
+    daq.ddr.parameters= {"data_version": daq.ddr.data_version}
+
 
     #TODO: Do I only need one DAC?
     # fast DACs -- only use to set SPI controller data source to DDR and disable filters
@@ -547,49 +569,8 @@ if __name__ == "__main__":
     daq.ddr.reset_mig_interface()
     daq.ddr.set_adc_dac_simultaneous() 
 
-#TODO: Change this into sample(), a single snapshot of the miso results, updating the plot and data
-def run_test(repeat=False, num_repeats=8, blk_multiples=40, PLT=False, KEEP_DAC_GOING=False):
 
-    #TODO: take out the file-oriented nature of runtest
-    file_name = 'test'
-    idx = 0
-
-    daq.ddr.parameters= {"data_version": daq.ddr.data_version}
-
-    chan_data_one_repeat = daq.ddr.save_data(data_dir, file_name.format(idx) + '.h5', num_repeats = num_repeats,
-                            blk_multiples=blk_multiples) # blk multiples must be a multiple of 10
-
-    # to get the deswizzled data of all repeats need to read the file
-    _, chan_data = read_h5(data_dir, file_name=file_name.format(idx) + '.h5', chan_list=np.arange(8))
-
-    # Long data sequence read back entire file 
-    adc_data, timestamp, dac_data, ads, ads_seq_cnt, reading_error = daq.ddr.data_to_names(chan_data)
-
-    return chan_data, adc_data, dac_data, timestamp
-
-chan_data, adc_data, dac_data, timestamp = run_test(num_repeats = 8, PLT=True)
-time.sleep(1)
-chan_data, adc_data, dac_data, timestamp = run_test(num_repeats = 8, PLT=True)
-time.sleep(1)
-chan_data, adc_data, dac_data, timestamp = run_test(num_repeats = 8, PLT=True)
-time.sleep(1)
-
-for x in chan_data[0]:
-    print(x)
-    
-app= QtWidgets.QApplication(sys.argv) # Instantiation of Qt app
-obj = MainWindow(channelsToConvert)                    # Instantiation of the window
-obj.show()                            # Draw window
-app.exec_()                           # Execute the application
-
-current_data, _ = daq.ddr.read_adc()
-chan_data = daq.ddr.deswizzle(current_data)
-chan_stack = np.vstack(
-                (chan_data[0], chan_data[1], chan_data[2], chan_data[3]))
-
-combine_stack = combine(chan_stack[0],chan_stack[1])
-
-for x in combine_stack:
-    print(hex(x))
-
-
+    app= QtWidgets.QApplication(sys.argv) # Instantiation of Qt app
+    obj = MainWindow(channelsToConvert)                    # Instantiation of the window
+    obj.show()                            # Draw window
+    app.exec_()                           # Execute the application
