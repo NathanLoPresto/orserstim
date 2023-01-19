@@ -13,11 +13,8 @@ Nathan LoPresto, lopr5624@stthomas.edu
 
 from pyripherals.peripherals.DDR3 import DDR3 
 from pyripherals.core import FPGA, Endpoint
-#from pyripherals.utils import from_voltage
 from PyQt5 import QtWidgets, QtCore #Used for GUI window
-#from ctypes import sizeof 
 import pyqtgraph as pg #Used for graphing widget inside pyqt5 window
-#from time import sleep
 import tkinter as tk # Gui library for the UI, taking in inputs etc.
 import pandas as pd
 import numpy as np
@@ -377,24 +374,28 @@ class MainWindow(QtWidgets.QMainWindow):
         chan_data = daq.ddr.deswizzle(current_data)
         chan_stack = np.vstack(
                         (chan_data[0], chan_data[1], chan_data[2], chan_data[3]))
-
         combine_stack = combine(chan_stack[0],chan_stack[1])
 
         allConverts = []
         for x in combine_stack:
             if (isConvert(hex(x))):
-                allConverts.append(x)
+                allConverts.append(ToVoltage(x))
+
         allConverts = allConverts[0::5]
-        print(allConverts[0:5])
         # convert into low or high gain
 
-        #self.channelsList[0] holds all of the timestamps for the data
-        #self.channelsList 1-n hold the actual convert data to be added to the plot widget
-        self.channelsList[0].append(time.time())
-        #self.channelsList[1].append(math.sin(time.time()))
-        self.channelsList[1].append(ToVoltage(allConverts[0]))
-        self.channelsList[0].pop(0)
-        self.channelsList[1].pop(0)
+        self.lastCycleEnd= time.time()
+
+        for x in range (len(allConverts)):
+            #Add new entries
+            self.channelsList[0].append(self.lastCycleStart + (self.lastCycleEnd-self.lastCycleStart)*x)
+            self.channelsList[1].append(allConverts[x])
+
+            #Delete old entries
+            self.channelsList[0].pop(0)
+            self.channelsList[1].pop(0)
+
+        self.lastCycleStart = time.time()
 
         #self.data_lines is the instance variable of the pg plot, update with timestamp and respective channel
         for n in range(len(self.data_lines)):
@@ -508,14 +509,13 @@ if __name__ == "__main__":
     daq.DAC[0].filter_select(operation="clear")
 
     #TODO: reimplement this with the stim setup commands
-    '''
     #STIM SETUP
     for x in range(len(STIM_SETUP)):
         daq.DAC[0].write(int(STIM_SETUP[x]))
  
     #Not needed most likely, system will defualt to host mode during host-driven writes
     daq.DAC[0].set_data_mux("host")
-    '''
+
 
     #DDR is loaded with waveforms
     daq.ddr.write_setup(data_driven_clock=False)
@@ -528,14 +528,14 @@ if __name__ == "__main__":
     print("SpeedVar is: " + str(SpeedVar) + " and the finalSpeed is: " + str(finalSpeed))
     
     #try decimal 8/10, this will eventually be taken from SpeedVar
-    daq.DAC[0].set_spi_sclk_divide(10)
+    daq.DAC[0].set_spi_sclk_divide(50)
 
     attributes = setAttributes(magnitude, electrodesStimming, polarities, RecoveryVar)
-    '''
+    
     #SETTING UP THE MAGNITUDES AND RATIOS OF STIMMING#
     for x in range(len(attributes)):
         daq.DAC[0].write(int(attributes[x], 16))
-    '''
+    
 
     #Keep this for when host-driven setup is written
     for i in range(6):
