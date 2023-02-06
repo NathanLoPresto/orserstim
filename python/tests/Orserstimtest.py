@@ -28,6 +28,7 @@ import json
 import time
 import math
 import sys
+import csv
 import os
 
 ###############
@@ -40,8 +41,7 @@ STIM_SETUP = [0xe0ff0000, 0x80200000, 0x80210000, 0x8026ffff, 0x6a000000,
 0x802300aa, 0x80240080, 0x80254f00, 0xd0280000, 0x8020aaaa, 0x802100ff, 0xe0ff0000]
 currentDate = datetime.datetime.now() # Grabbing the current date and time
 dateString = currentDate.strftime("/home/orserpi/Downloads/JSONData/%B%Y%A%I%M%S%p") # Formatting date and time into .json file name
-#TODO: ChannelsToConvert is weird here, its also set my the GUI
-channelsToConvert = 4 #This should be set lower for the Orserstim project
+
 
 #Runs the GUI to get data from the user about the experiment
 def runGUI():
@@ -146,7 +146,7 @@ def runGUI():
     electrodesStimming.pop(0)
     electrodesSampled.pop(0)
     polarities.pop(0)
-    return electrodesStimming, polarities, pulseWidth, RecoveryVar, MagVars, SpeedVar
+    return electrodesStimming, polarities, pulseWidth, RecoveryVar, MagVars, SpeedVar, electrodesSampled
 
 #Here, the impedence check is run on the intan chip, results are printed out
 def fullTest():
@@ -212,12 +212,17 @@ def setAttributes(magnitude, anodes, cathodes, ratio):
 
     return list_of_commands
 
-#Sends a convert command to a single channel
+
+#TODO: Fix these converts
 def convertChannel(channel):
+
+    '''
     baseConvert = 0x08000000
     baseConvert |= (channel<<16)
-    return baseConvert
+    '''
+    return 0x08000000
 
+#TODO: Downtime needs to be added
 #Makes the command structure to load into the DDR3
 def make_command_structure(electrodesStimming, polarities, channelsToConvert, pulseWidth, RecoveryVar):
 
@@ -271,6 +276,8 @@ def createYaml():
     f.write(line1+line2+line3+line4+line5)
     f.close
 
+
+#TODO: Looks like this works, but check this again
 #Splits the command structure into the arrays needed for dataArrays 1 and dataArrays 0
 def splitCommandsToDataArrays(commandStructure, dataArrayLength):
     commandTop16 = []
@@ -288,6 +295,8 @@ def splitCommandsToDataArrays(commandStructure, dataArrayLength):
         newArray1 = np.append(newArray1, 0x0000)
         newArray0 = np.append(newArray0, 0x0000)
 
+    print(newArray0[0:50])
+    print(newArray1[0:50])
     return newArray0, newArray1
 
 #combines the 2, 16-bit miso results into a single 32 bit miso response
@@ -298,9 +307,11 @@ def combine(lower15bits, higher16bits):
         combinedArray.append(addVal)
     return combinedArray
 
+
+#TODO: This needs to be more robust
 # Sorts data into the type of MOSI transfer it came from
 def isConvert(data):
-    if data[0:8] == "ffff0000"or data[0:8] == "ffff0007" or data[0:8] == "fffffffe" or data[6:8] == "20":
+    if data[2:6] == "ffff" or data[6:8] == "20":
         return False # Write
     else:
         return True
@@ -329,9 +340,9 @@ def convertHighGainTomv(data):
     rawData = (int(finalString, 16))
     return round((rawData-32768)*.000000195, 4)
 
-#integer miso result to voltage
+#TODO: This should be high gain
 def ToVoltage(data):
-    data = data>>16
+    data = data&0x3ff
     return round((data-512)*-.01923,4 )
 
 ##################################
@@ -370,26 +381,31 @@ class MainWindow(QtWidgets.QMainWindow):
     #Called by each MainWindow object by QTimer()
     def update_plot_data(self):
 
-        current_data, _ = daq.ddr.read_adc(blk_multiples = 4)
+        #TODO: check the speed and data width here
+        current_data, _ = daq.ddr.read_adc(blk_multiples = 64)
         chan_data = daq.ddr.deswizzle(current_data)
         chan_stack = np.vstack(
                         (chan_data[0], chan_data[1], chan_data[2], chan_data[3]))
-        combine_stack = combine(chan_stack[0],chan_stack[1])
+
+        combine_stack = combine(chan_stack[0],chan_stack[1]) #taking top and bottom 16 bits together into 32 bit command
 
         allConverts = []
         for x in combine_stack:
             if (isConvert(hex(x))):
                 allConverts.append(ToVoltage(x))
 
-        allConverts = allConverts[0::5]
+        #TODO: Make this modular
+        allConverts = allConverts[0::20]
         # convert into low or high gain
 
         self.lastCycleEnd= time.time()
 
         for x in range (len(allConverts)):
             #Add new entries
-            self.channelsList[0].append(self.lastCycleStart + (self.lastCycleEnd-self.lastCycleStart)*x)
+            self.channelsList[0].append(self.mosiIterator)
             self.channelsList[1].append(allConverts[x])
+
+            self.mosiIterator= self.mosiIterator+1
 
             #Delete old entries
             self.channelsList[0].pop(0)
@@ -400,6 +416,7 @@ class MainWindow(QtWidgets.QMainWindow):
         #self.data_lines is the instance variable of the pg plot, update with timestamp and respective channel
         for n in range(len(self.data_lines)):
             self.data_lines[n].setData(self.channelsList[0], self.channelsList[1])
+        
 
 #Fills DDR with null commands, exits the python script
 def emergencyInterrupt():
@@ -418,8 +435,7 @@ def getMetaData():
         "Stim Magnitude(uA)": magnitude,
         "Recovery Ratio" : RecoveryVar,
         "Anodes": electrodesStimming,
-        "Cathodes": polarities,
-        "Sampled Channels": channelsToConvert
+        "Cathodes": polarities
         }
     currentDate = datetime.datetime.now()                          # Grabbing the current date and time
     dateString = currentDate.strftime("/Users/lopr5624/JSONData/%B%Y%A%I%M%S%p") 
@@ -433,7 +449,6 @@ def getMetaData():
 #MAIN LOOP#
 if __name__ == "__main__":
     createYaml() #Creates the .yaml file in the .pyripherals folder 
-
 
     #TODO: Are lines 40-61 necessary?
     # The boards.py file is located in the covg_fpga folder so we need to find that folder. If it is not above the current directory, the program fails.
@@ -521,27 +536,30 @@ if __name__ == "__main__":
     daq.ddr.write_setup(data_driven_clock=False)
 
     #RUNNING THE GUI#
-    electrodesStimming, polarities, pulseWidth, RecoveryVar, magnitude, SpeedVar = runGUI()
+    electrodesStimming, polarities, pulseWidth, RecoveryVar, magnitude, SpeedVar, electrodesSampled = runGUI()
 
     finalSpeed = 100000/SpeedVar
 
     print("SpeedVar is: " + str(SpeedVar) + " and the finalSpeed is: " + str(finalSpeed))
     
-    #try decimal 8/10, this will eventually be taken from SpeedVar
-    daq.DAC[0].set_spi_sclk_divide(50)
+    #TODO: Connect this to the speed input from the user
+    daq.DAC[0].set_spi_sclk_divide(25)
 
     attributes = setAttributes(magnitude, electrodesStimming, polarities, RecoveryVar)
     
     #SETTING UP THE MAGNITUDES AND RATIOS OF STIMMING#
     for x in range(len(attributes)):
+        print(attributes[x])
         daq.DAC[0].write(int(attributes[x], 16))
-    
 
     #Keep this for when host-driven setup is written
     for i in range(6):
         daq.DAC[i].set_data_mux("DDR")
 
-    commandStructure = make_command_structure(electrodesStimming, polarities, channelsToConvert, pulseWidth, RecoveryVar)
+    commandStructure = make_command_structure(electrodesStimming, polarities, len(electrodesSampled), pulseWidth, RecoveryVar)
+
+    for x in commandStructure:
+        print(hex(x))
 
     daq.ddr.data_arrays[0], daq.ddr.data_arrays[1] = splitCommandsToDataArrays(commandStructure, len(daq.ddr.data_arrays[0]))
 
@@ -569,8 +587,7 @@ if __name__ == "__main__":
     daq.ddr.reset_mig_interface()
     daq.ddr.set_adc_dac_simultaneous() 
 
-
     app= QtWidgets.QApplication(sys.argv) # Instantiation of Qt app
-    obj = MainWindow(channelsToConvert)                    # Instantiation of the window
+    obj = MainWindow(len(electrodesSampled))                    # Instantiation of the window
     obj.show()                            # Draw window
     app.exec_()                           # Execute the application
