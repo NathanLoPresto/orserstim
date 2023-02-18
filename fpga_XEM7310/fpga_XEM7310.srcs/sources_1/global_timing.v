@@ -20,7 +20,7 @@ module global_timing
 parameter real          FPGA_CLOCK_FREQ         = 200;  // MHz
 // Conversion signal generation
 parameter real          TCYC_PERIOD                    = 0.200; // us 
-parameter       [31:0]  ADC_CYC_CNT             = FPGA_CLOCK_FREQ * TCYC_PERIOD - 1;
+parameter       [31:0]  ADC_CYC_CNT             = 319;
 parameter       [4:0]   CYCLE_CNT = 9;   // DDR cycles - 1 before repeat 
  
 // Update conversion timing counters (this counter is then used by the AD7961 module)

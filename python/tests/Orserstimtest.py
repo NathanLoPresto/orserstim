@@ -35,10 +35,12 @@ import os
 ###CONSTANTS###
 ###############
 
+#Initialization MOSi commands for the Intan chip
 STIM_SETUP = [0xe0ff0000, 0x80200000, 0x80210000, 0x8026ffff, 0x6a000000, 
 0x800000c7, 0x8001051a, 0x80020000, 0x80030080, 0x80040016, 0x80050017, 
 0x800600a8, 0x8007000a, 0x8008ffff, 0xa00a0000, 0xa00cffff, 0x802200e2, 
 0x802300aa, 0x80240080, 0x80254f00, 0xd0280000, 0x8020aaaa, 0x802100ff, 0xe0ff0000]
+
 currentDate = datetime.datetime.now() # Grabbing the current date and time
 dateString = currentDate.strftime("/home/orserpi/Downloads/JSONData/%B%Y%A%I%M%S%p") # Formatting date and time into .json file name
 
@@ -148,6 +150,8 @@ def runGUI():
     polarities.pop(0)
     return electrodesStimming, polarities, pulseWidth, RecoveryVar, MagVars, SpeedVar, electrodesSampled
 
+
+#TODO: set up the impedance check
 #Here, the impedence check is run on the intan chip, results are printed out
 def fullTest():
     #Would it be best to do this in host mode?
@@ -216,11 +220,9 @@ def setAttributes(magnitude, anodes, cathodes, ratio):
 #TODO: Fix these converts
 def convertChannel(channel):
 
-    '''
     baseConvert = 0x08000000
     baseConvert |= (channel<<16)
-    '''
-    return 0x08000000
+    return baseConvert
 
 #TODO: Downtime needs to be added
 #Makes the command structure to load into the DDR3
@@ -342,8 +344,23 @@ def convertHighGainTomv(data):
 
 #TODO: This should be high gain
 def ToVoltage(data):
-    data = data&0x3ff
-    return round((data-512)*-.01923,4 )
+
+    data = data>>16
+    return (data-32768)*.000000195
+    
+    '''
+    data = (data&0x3ff)
+    return (data-512)*-.01923
+    '''
+
+def compensate(commands):
+    newCommands = []
+    for x in commands:
+        newCommands.append(x)
+        newCommands.append(x)
+        newCommands.append(x)
+    return newCommands
+
 
 ##################################
 ##########GRAPHING CLASS##########
@@ -382,7 +399,7 @@ class MainWindow(QtWidgets.QMainWindow):
     def update_plot_data(self):
 
         #TODO: check the speed and data width here
-        current_data, _ = daq.ddr.read_adc(blk_multiples = 64)
+        current_data, _ = daq.ddr.read_adc(blk_multiples = 4)
         chan_data = daq.ddr.deswizzle(current_data)
         chan_stack = np.vstack(
                         (chan_data[0], chan_data[1], chan_data[2], chan_data[3]))
@@ -395,21 +412,29 @@ class MainWindow(QtWidgets.QMainWindow):
                 allConverts.append(ToVoltage(x))
 
         #TODO: Make this modular
-        allConverts = allConverts[0::20]
+        #allConverts = allConverts[0::20]
         # convert into low or high gain
 
         self.lastCycleEnd= time.time()
 
+        '''
         for x in range (len(allConverts)):
             #Add new entries
             self.channelsList[0].append(self.mosiIterator)
             self.channelsList[1].append(allConverts[x])
 
-            self.mosiIterator= self.mosiIterator+1
-
-            #Delete old entries
             self.channelsList[0].pop(0)
             self.channelsList[1].pop(0)
+
+            self.mosiIterator= self.mosiIterator+1
+        '''
+
+        self.channelsList[1].append(allConverts[0])
+        self.channelsList[0].append(time.time())
+
+        #Delete old entries
+        self.channelsList[0].pop(0)
+        self.channelsList[1].pop(0)
 
         self.lastCycleStart = time.time()
 
@@ -538,12 +563,12 @@ if __name__ == "__main__":
     #RUNNING THE GUI#
     electrodesStimming, polarities, pulseWidth, RecoveryVar, magnitude, SpeedVar, electrodesSampled = runGUI()
 
-    finalSpeed = 100000/SpeedVar
+    finalSpeed = 100000
 
     print("SpeedVar is: " + str(SpeedVar) + " and the finalSpeed is: " + str(finalSpeed))
     
     #TODO: Connect this to the speed input from the user
-    daq.DAC[0].set_spi_sclk_divide(25)
+    daq.DAC[0].set_spi_sclk_divide(5)
 
     attributes = setAttributes(magnitude, electrodesStimming, polarities, RecoveryVar)
     
