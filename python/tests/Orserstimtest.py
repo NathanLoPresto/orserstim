@@ -18,28 +18,24 @@ import pyqtgraph as pg #Used for graphing widget inside pyqt5 window
 import tkinter as tk # Gui library for the UI, taking in inputs etc.
 import pandas as pd
 import numpy as np
-import binascii
 import platform
 import datetime
 import getpass
-import logging # don't think this uses logging, should it?
-import atexit
 import json
 import time
-import math
 import sys
-import csv
 import os
 
 ###############
 ###CONSTANTS###
 ###############
 
-#Initialization MOSi commands for the Intan chip
+#Initialization MOSI commands for the Intan chip
 STIM_SETUP = [0xe0ff0000, 0x80200000, 0x80210000, 0x8026ffff, 0x6a000000, 
-0x800000c7, 0x8001051a, 0x80020000, 0x80030080, 0x80040016, 0x80050017, 
+0x800000c7, 0x8001051a, 0x80020000,0x80030080, 0x80040016, 0x80050017, 
 0x800600a8, 0x8007000a, 0x8008ffff, 0xa00a0000, 0xa00cffff, 0x802200e2, 
-0x802300aa, 0x80240080, 0x80254f00, 0xd0280000, 0x8020aaaa, 0x802100ff, 0xe0ff0000]
+0x802300aa, 0x80240080, 0x80254f00, 0xa02a0000, 0xa02c0000,0xa02e0000,
+0xa0300000,0x8020aaaa, 0x802100ff, 0xe0ff0000]
 
 currentDate = datetime.datetime.now() # Grabbing the current date and time
 dateString = currentDate.strftime("/home/orserpi/Downloads/JSONData/%B%Y%A%I%M%S%p") # Formatting date and time into .json file name
@@ -122,13 +118,13 @@ def runGUI():
         pulseWidth = int(PulseVar.get())
     except ValueError:
         print("Invalid Pulse Width Value, default to 500")
-        pulseWidth = 500
+        pulseWidth = 50
     
     try:
         MagVars = int(MagVars.get())
     except ValueError:
         print("Invalid magnitude, default to 255")
-        MagVars = 255
+        MagVars = 200
         
     try:
         RecoveryVar = int(RecoveryVar.get())
@@ -173,7 +169,9 @@ def electrodeMag(polarity, electrode, magnitude):
     else:
         baseReg=96
     baseReg+=electrode
-    commandString += ((hex(baseReg))[2:] + "8000")
+    commandString += ((hex(baseReg))[2:])
+    magTrim = 0x8000 + magnitude
+    commandString += ((hex(magTrim))[2:])
     return commandString
 
 #Turns off all stim channels
@@ -216,8 +214,7 @@ def setAttributes(magnitude, anodes, cathodes, ratio):
 
     return list_of_commands
 
-
-#TODO: Fix these converts
+#Converts a single channnel
 def convertChannel(channel):
 
     baseConvert = 0x08000000
@@ -226,13 +223,16 @@ def convertChannel(channel):
 
 #TODO: Downtime needs to be added
 #Makes the command structure to load into the DDR3
-def make_command_structure(electrodesStimming, polarities, channelsToConvert, pulseWidth, RecoveryVar):
+def make_command_structure(electrodesStimming, polarities, channelsToConvert, pulseWidth, RecoveryVar, SpeedVar):
+
+    #Length of a single command in uS
+    lengthOfCommand = int((1.0/SpeedVar)*64000)
 
     mosiIterator =0
     command_structure = []
-    convertsPos = int((pulseWidth/55)-2)
-    convertsNeg = int(((pulseWidth*RecoveryVar/55))-1)
-    afterConverts = (channelsToConvert-(convertsPos + convertsNeg))%channelsToConvert
+    convertsPos = int((pulseWidth-lengthOfCommand)/lengthOfCommand)
+    convertsNeg = int(((pulseWidth*RecoveryVar)-lengthOfCommand)/lengthOfCommand)
+    afterConverts = (len(channelsToConvert)-(convertsPos + convertsNeg))%len(channelsToConvert)
     commandsDone = (convertsPos+convertsNeg+afterConverts+9)
     extraCommands =0
     if commandsDone>24:
@@ -243,22 +243,25 @@ def make_command_structure(electrodesStimming, polarities, channelsToConvert, pu
     command_structure.append(polarityPositive(electrodesStimming))
     command_structure.append(onChannel(electrodesStimming+polarities))
     for x in range(convertsPos):
-        command_structure.append(convertChannel(mosiIterator%channelsToConvert))
+        command_structure.append(convertChannel(channelsToConvert[mosiIterator%len(channelsToConvert)]))
         mosiIterator +=mosiIterator
     command_structure.append(stimOff())
-    command_structure.append(polarityNegative(electrodesStimming))
+    command_structure.append(polarityPositive(polarities))
     command_structure.append(onChannel(electrodesStimming+polarities))
     for x in range (convertsNeg):
-        command_structure.append(convertChannel(mosiIterator%channelsToConvert))
+        command_structure.append(convertChannel(channelsToConvert[mosiIterator%len(channelsToConvert)]))
         mosiIterator += mosiIterator
     command_structure.append(stimOff())
     for x in range (afterConverts):
-        command_structure.append(convertChannel(mosiIterator%channelsToConvert))
+        command_structure.append(convertChannel(channelsToConvert[mosiIterator%len(channelsToConvert)]))
         mosiIterator += mosiIterator
-    command_structure.append(0xa02effff)
-    command_structure.append(0xa02e0000)
+    #command_structure.append(0xa02effff)
+    #command_structure.append(0xa02e0000)
+
+    '''
     for x in range(extraCommands):
         command_structure.append(stimOff())
+    '''
 
     return command_structure
 
@@ -297,8 +300,6 @@ def splitCommandsToDataArrays(commandStructure, dataArrayLength):
         newArray1 = np.append(newArray1, 0x0000)
         newArray0 = np.append(newArray0, 0x0000)
 
-    print(newArray0[0:50])
-    print(newArray1[0:50])
     return newArray0, newArray1
 
 #combines the 2, 16-bit miso results into a single 32 bit miso response
@@ -345,22 +346,22 @@ def convertHighGainTomv(data):
 #TODO: This should be high gain
 def ToVoltage(data):
 
+    '''
+
     data = data>>16
     return (data-32768)*.000000195
-    
     '''
+    
     data = (data&0x3ff)
     return (data-512)*-.01923
-    '''
 
-def compensate(commands):
+def compensate(numRepeats, commands):
     newCommands = []
     for x in commands:
-        newCommands.append(x)
-        newCommands.append(x)
-        newCommands.append(x)
-    return newCommands
+        for y in range (numRepeats):
+            newCommands.append(x)
 
+    return newCommands
 
 ##################################
 ##########GRAPHING CLASS##########
@@ -397,9 +398,16 @@ class MainWindow(QtWidgets.QMainWindow):
         
     #Called by each MainWindow object by QTimer()
     def update_plot_data(self):
+        import time
+
+        time.sleep(10)
+
+        print("running")
+
+        '''
 
         #TODO: check the speed and data width here
-        current_data, _ = daq.ddr.read_adc(blk_multiples = 4)
+        current_data, _ = daq.ddr.read_adc(blk_multiples = 16)
         chan_data = daq.ddr.deswizzle(current_data)
         chan_stack = np.vstack(
                         (chan_data[0], chan_data[1], chan_data[2], chan_data[3]))
@@ -417,7 +425,6 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.lastCycleEnd= time.time()
 
-        '''
         for x in range (len(allConverts)):
             #Add new entries
             self.channelsList[0].append(self.mosiIterator)
@@ -427,7 +434,6 @@ class MainWindow(QtWidgets.QMainWindow):
             self.channelsList[1].pop(0)
 
             self.mosiIterator= self.mosiIterator+1
-        '''
 
         self.channelsList[1].append(allConverts[0])
         self.channelsList[0].append(time.time())
@@ -441,6 +447,8 @@ class MainWindow(QtWidgets.QMainWindow):
         #self.data_lines is the instance variable of the pg plot, update with timestamp and respective channel
         for n in range(len(self.data_lines)):
             self.data_lines[n].setData(self.channelsList[0], self.channelsList[1])
+
+        '''
         
 
 #Fills DDR with null commands, exits the python script
@@ -470,6 +478,22 @@ def getMetaData():
     json.dump(metaDict, outfile, indent =6) # Writing data to disk
     outfile.close()         
     return metaDict
+
+
+#sets the speed of the SPI clock
+def clockSpeed(userDAC, speedVar):
+
+    divider = int(100000/speedVar)
+
+    userDAC.DAC[0].set_spi_sclk_divide(divider)
+
+#Calculates the amount of duplicate commands needed to compensate for sample rate
+def numDuplicates(speedVar):
+    repeats = (int (20000/speedVar))
+    if (repeats<1):
+        repeats =1
+    return repeats
+
 
 #MAIN LOOP#
 if __name__ == "__main__":
@@ -563,13 +587,7 @@ if __name__ == "__main__":
     #RUNNING THE GUI#
     electrodesStimming, polarities, pulseWidth, RecoveryVar, magnitude, SpeedVar, electrodesSampled = runGUI()
 
-    finalSpeed = 100000
-
-    print("SpeedVar is: " + str(SpeedVar) + " and the finalSpeed is: " + str(finalSpeed))
-    
-    #TODO: Connect this to the speed input from the user
-    daq.DAC[0].set_spi_sclk_divide(5)
-
+    #attributes = setAttributes(255, [0], [1], 1)
     attributes = setAttributes(magnitude, electrodesStimming, polarities, RecoveryVar)
     
     #SETTING UP THE MAGNITUDES AND RATIOS OF STIMMING#
@@ -577,11 +595,16 @@ if __name__ == "__main__":
         print(attributes[x])
         daq.DAC[0].write(int(attributes[x], 16))
 
+    clockSpeed(daq, SpeedVar)
+
     #Keep this for when host-driven setup is written
     for i in range(6):
         daq.DAC[i].set_data_mux("DDR")
 
-    commandStructure = make_command_structure(electrodesStimming, polarities, len(electrodesSampled), pulseWidth, RecoveryVar)
+    commandStructure = make_command_structure(electrodesStimming, polarities, electrodesSampled, pulseWidth, RecoveryVar, SpeedVar)
+    #commandStructure = [0xa02c0001, 0xa02a0003, 0xa02a0000, 0xa02c0002,0xa02a0003, 0xa02a0000]
+
+    commandStructure = compensate(numDuplicates(SpeedVar), commandStructure)
 
     for x in commandStructure:
         print(hex(x))
