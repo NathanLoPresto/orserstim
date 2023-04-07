@@ -40,7 +40,6 @@ STIM_SETUP = [0xe0ff0000, 0x80200000, 0x80210000, 0x8026ffff, 0x6a000000,
 currentDate = datetime.datetime.now() # Grabbing the current date and time
 dateString = currentDate.strftime("/home/orserpi/Downloads/JSONData/%B%Y%A%I%M%S%p") # Formatting date and time into .json file name
 
-
 #Runs the GUI to get data from the user about the experiment
 def runGUI():
     dataPointsToShow = 1000          # The Amount of data points to show in the graphing window
@@ -258,10 +257,10 @@ def make_command_structure(electrodesStimming, polarities, channelsToConvert, pu
     #command_structure.append(0xa02effff)
     #command_structure.append(0xa02e0000)
 
-    '''
-    for x in range(extraCommands):
+    #TODO: Tempporary
+    for x in range(50):
         command_structure.append(stimOff())
-    '''
+    
 
     return command_structure
 
@@ -398,13 +397,7 @@ class MainWindow(QtWidgets.QMainWindow):
         
     #Called by each MainWindow object by QTimer()
     def update_plot_data(self):
-        import time
 
-        time.sleep(10)
-
-        print("running")
-
-        '''
 
         #TODO: check the speed and data width here
         current_data, _ = daq.ddr.read_adc(blk_multiples = 16)
@@ -420,35 +413,42 @@ class MainWindow(QtWidgets.QMainWindow):
                 allConverts.append(ToVoltage(x))
 
         #TODO: Make this modular
-        #allConverts = allConverts[0::20]
+        allConverts = allConverts[0::2]
+
+
         # convert into low or high gain
 
-        self.lastCycleEnd= time.time()
+        #self.lastCycleEnd= time.time()
 
+        
+        '''
         for x in range (len(allConverts)):
             #Add new entries
-            self.channelsList[0].append(self.mosiIterator)
+            self.channelsList[0].append(time.time())
             self.channelsList[1].append(allConverts[x])
 
             self.channelsList[0].pop(0)
             self.channelsList[1].pop(0)
-
-            self.mosiIterator= self.mosiIterator+1
-
+        '''
+        
+        
         self.channelsList[1].append(allConverts[0])
         self.channelsList[0].append(time.time())
 
         #Delete old entries
         self.channelsList[0].pop(0)
         self.channelsList[1].pop(0)
+        
 
-        self.lastCycleStart = time.time()
+        #self.lastCycleStart = time.time()
 
         #self.data_lines is the instance variable of the pg plot, update with timestamp and respective channel
         for n in range(len(self.data_lines)):
             self.data_lines[n].setData(self.channelsList[0], self.channelsList[1])
 
-        '''
+        
+
+        
         
 
 #Fills DDR with null commands, exits the python script
