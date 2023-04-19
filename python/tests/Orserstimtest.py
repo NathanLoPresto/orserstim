@@ -6,7 +6,7 @@ Abe Stroschein, ajstroschein@stthomas.edu
 Dr. Lucas Koerner, koerner.lucas@stthomas.edu
 Nathan LoPresto, lopr5624@stthomas.edu
 """
-#hello natha
+
 #############
 ###IMPORTS###
 #############
@@ -24,6 +24,7 @@ import getpass
 import json
 import time
 import sys
+import csv
 import os
 
 ###############
@@ -31,6 +32,8 @@ import os
 ###############
 
 #Initialization MOSI commands for the Intan chip
+#These commands are written to the intan chip before anything else
+#in host mode, most likely don't need to be changed
 STIM_SETUP = [0xe0ff0000, 0x80200000, 0x80210000, 0x8026ffff, 0x6a000000, 
 0x800000c7, 0x8001051a, 0x80020000,0x80030080, 0x80040016, 0x80050017, 
 0x800600a8, 0x8007000a, 0x8008ffff, 0xa00a0000, 0xa00cffff, 0x802200e2, 
@@ -42,7 +45,7 @@ dateString = currentDate.strftime("/home/orserpi/Downloads/JSONData/%B%Y%A%I%M%S
 
 #Runs the GUI to get data from the user about the experiment
 def runGUI():
-    dataPointsToShow = 1000          # The Amount of data points to show in the graphing window
+    dataPointsToShow = 400          # The Amount of data points to show in the graphing window
     
     top = tk.Tk()                                       # Initialize the TKinter APP
     top.title("Intan Sense/Stim Initialization window") # Setting the title of the tk app
@@ -59,6 +62,7 @@ def runGUI():
         PosVars[x]  = tk.IntVar()
     
     #Packing and initializing the elements in the TK app
+    #Frames are the columns/boxes holding the check boxes/text boxes
     frame = tk.LabelFrame(top, text = "Select your electrodes to sample/plot", padx = 20, pady = 20)
     frame.pack(pady =20, padx = 10, side = "left")
     
@@ -143,6 +147,11 @@ def runGUI():
     electrodesStimming.pop(0)
     electrodesSampled.pop(0)
     polarities.pop(0)
+
+
+    #ElectrodesStimming = Anodic electrodes as an array of integers
+    #Polarities = cathodic elements as an array of integers
+    #Electrdodes samples = The electrodes that are sensing as an array of integers
     return electrodesStimming, polarities, pulseWidth, RecoveryVar, MagVars, SpeedVar, electrodesSampled
 
 
@@ -229,8 +238,14 @@ def make_command_structure(electrodesStimming, polarities, channelsToConvert, pu
 
     mosiIterator =0
     command_structure = []
+
+    #Number of converts to squeeze in the positive stim 
     convertsPos = int((pulseWidth-lengthOfCommand)/lengthOfCommand)
+
+    #Number of converts to squeeze in the negative stim
     convertsNeg = int(((pulseWidth*RecoveryVar)-lengthOfCommand)/lengthOfCommand)
+
+    #Converts after the stim pulse 
     afterConverts = (len(channelsToConvert)-(convertsPos + convertsNeg))%len(channelsToConvert)
     commandsDone = (convertsPos+convertsNeg+afterConverts+9)
     extraCommands =0
@@ -239,30 +254,31 @@ def make_command_structure(electrodesStimming, polarities, channelsToConvert, pu
     else:
         extraCommands = 24%commandsDone
 
-    command_structure.append(polarityPositive(electrodesStimming))
-    command_structure.append(onChannel(electrodesStimming+polarities))
-    for x in range(convertsPos):
+
+    #Beginning of the command structure construction
+    command_structure.append(polarityPositive(electrodesStimming)) # Stim pulse positive
+    command_structure.append(onChannel(electrodesStimming+polarities)) # Stim pulse on
+    for x in range(convertsPos): # Converts during the positive stim pulse
         command_structure.append(convertChannel(channelsToConvert[mosiIterator%len(channelsToConvert)]))
         mosiIterator +=mosiIterator
-    command_structure.append(stimOff())
-    command_structure.append(polarityPositive(polarities))
-    command_structure.append(onChannel(electrodesStimming+polarities))
-    for x in range (convertsNeg):
+    command_structure.append(stimOff()) # Turning the stim off
+    command_structure.append(polarityPositive(polarities)) # Stim pulse negative
+    command_structure.append(onChannel(electrodesStimming+polarities)) # Turning the stim on(negative)
+    for x in range (convertsNeg): # Converts during the negative pulse
         command_structure.append(convertChannel(channelsToConvert[mosiIterator%len(channelsToConvert)]))
         mosiIterator += mosiIterator
-    command_structure.append(stimOff())
+    command_structure.append(stimOff()) # Turning the stim pff
     for x in range (afterConverts):
         command_structure.append(convertChannel(channelsToConvert[mosiIterator%len(channelsToConvert)]))
         mosiIterator += mosiIterator
     #command_structure.append(0xa02effff)
     #command_structure.append(0xa02e0000)
 
-    #TODO: Tempporary
+    #TODO: Make this the exact length we want
     for x in range(50):
         command_structure.append(stimOff())
     
-
-    return command_structure
+    return command_structure # Returning the command structure to be placed into the DDR3
 
 #Creates the .yaml file 
 def createYaml():
@@ -281,8 +297,9 @@ def createYaml():
     f.close
 
 
-#TODO: Looks like this works, but check this again
 #Splits the command structure into the arrays needed for dataArrays 1 and dataArrays 0
+#HDL MOSI buffer is split into arrays of 16-buts, so the command structure is split and loaded
+# into the first two data_arrays to be pulled by the SPI controller
 def splitCommandsToDataArrays(commandStructure, dataArrayLength):
     commandTop16 = []
     commandBottom16 = []
@@ -342,7 +359,7 @@ def convertHighGainTomv(data):
     rawData = (int(finalString, 16))
     return round((rawData-32768)*.000000195, 4)
 
-#TODO: This should be high gain
+#TODO: This is set to Low gain for testing
 def ToVoltage(data):
 
     '''
@@ -354,6 +371,7 @@ def ToVoltage(data):
     data = (data&0x3ff)
     return (data-512)*-.01923
 
+#Due to the sampling rate of MOSI commands, the results have to be downsampled
 def compensate(numRepeats, commands):
     newCommands = []
     for x in commands:
@@ -367,6 +385,7 @@ def compensate(numRepeats, commands):
 ##################################
 class MainWindow(QtWidgets.QMainWindow):
 
+    # Initializing the graphing window
     def __init__(self,channelsToConvert,*args, **kwargs):
         super(MainWindow, self).__init__(*args, **kwargs)
         
@@ -375,7 +394,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.channelsList = [0]
         
         for x in range(channelsToConvert+1): # Creates a array for each channel in the channel list
-            self.channelsList.append(list(range(1000))) 
+            self.channelsList.append(list(range(400))) 
         
         self.channelsList.pop(0) # First channel in channel list is unusable
         self.graphWidget.setBackground('w')
@@ -394,13 +413,12 @@ class MainWindow(QtWidgets.QMainWindow):
         self.beginTime = time.time()                      # Initializes the start time of the program
         self.lastCycleStart = time.time()                           # Initializes the start of the last conversion cycle
         self.lastCycleEnd = time.time()                              # Initializes the end of the last conversion cycle
+        self.accuracy = 20
         
     #Called by each MainWindow object by QTimer()
     def update_plot_data(self):
-
-
-        #TODO: check the speed and data width here
-        current_data, _ = daq.ddr.read_adc(blk_multiples = 16)
+        
+        current_data, _ = daq.ddr.read_adc(blk_multiples = 16) # Takes a block of MISO back out of the DDR
         chan_data = daq.ddr.deswizzle(current_data)
         chan_stack = np.vstack(
                         (chan_data[0], chan_data[1], chan_data[2], chan_data[3]))
@@ -408,49 +426,44 @@ class MainWindow(QtWidgets.QMainWindow):
         combine_stack = combine(chan_stack[0],chan_stack[1]) #taking top and bottom 16 bits together into 32 bit command
 
         allConverts = []
+
+        #Filtering out the non-convert results
         for x in combine_stack:
             if (isConvert(hex(x))):
                 allConverts.append(ToVoltage(x))
 
+
         #TODO: Make this modular
-        allConverts = allConverts[0::2]
-
-
-        # convert into low or high gain
-
-        #self.lastCycleEnd= time.time()
-
+        #allConverts = allConverts[0::2]
         
-        '''
-        for x in range (len(allConverts)):
-            #Add new entries
-            self.channelsList[0].append(time.time())
-            self.channelsList[1].append(allConverts[x])
+        self.lastCycleStart = self.beginTime
+        self.beginTime = time.time()
+        #convertSkip = int(len(allConverts)/self.accuracy)
+        #timeSkip = (.8/self.accuracy)
+        
 
+        '''
+        for x in range (self.accuracy):
+            self.channelsList[1].append(allConverts[x*convertSkip])
+            self.channelsList[0].append(firstTime + (timeSkip*x))
+            #Delete old entries
             self.channelsList[0].pop(0)
             self.channelsList[1].pop(0)
         '''
-        
-        
+
+        #Adding the new entry
         self.channelsList[1].append(allConverts[0])
-        self.channelsList[0].append(time.time())
+        self.channelsList[0].append(self.beginTime)
 
         #Delete old entries
         self.channelsList[0].pop(0)
         self.channelsList[1].pop(0)
-        
-
-        #self.lastCycleStart = time.time()
 
         #self.data_lines is the instance variable of the pg plot, update with timestamp and respective channel
         for n in range(len(self.data_lines)):
             self.data_lines[n].setData(self.channelsList[0], self.channelsList[1])
-
-        
-
         
         
-
 #Fills DDR with null commands, exits the python script
 def emergencyInterrupt():
     daq.ddr.write_buf(bytearray(0x00000000))
