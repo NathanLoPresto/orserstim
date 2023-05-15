@@ -13,10 +13,12 @@ Nathan LoPresto, lopr5624@stthomas.edu
 
 from pyripherals.peripherals.DDR3 import DDR3 
 from pyripherals.core import FPGA, Endpoint
+import matplotlib.pyplot as plt
 from PyQt5 import QtWidgets, QtCore #Used for GUI window
 import pyqtgraph as pg #Used for graphing widget inside pyqt5 window
 import tkinter as tk # Gui library for the UI, taking in inputs etc.
 import pandas as pd
+import threading
 import numpy as np
 import platform
 import datetime
@@ -40,12 +42,14 @@ STIM_SETUP = [0xe0ff0000, 0x80200000, 0x80210000, 0x8026ffff, 0x6a000000,
 0x802300aa, 0x80240080, 0x80254f00, 0xa02a0000, 0xa02c0000,0xa02e0000,
 0xa0300000,0x8020aaaa, 0x802100ff, 0xe0ff0000]
 
+totalConverts =[]
+
 currentDate = datetime.datetime.now() # Grabbing the current date and time
 dateString = currentDate.strftime("/home/orserpi/Downloads/JSONData/%B%Y%A%I%M%S%p") # Formatting date and time into .json file name
 
 #Runs the GUI to get data from the user about the experiment
 def runGUI():
-    dataPointsToShow = 400          # The Amount of data points to show in the graphing window
+    dataPointsToShow = 100      # The Amount of data points to show in the graphing window
     
     top = tk.Tk()                                       # Initialize the TKinter APP
     top.title("Intan Sense/Stim Initialization window") # Setting the title of the tk app
@@ -321,6 +325,8 @@ def splitCommandsToDataArrays(commandStructure, dataArrayLength):
 #combines the 2, 16-bit miso results into a single 32 bit miso response
 def combine(lower15bits, higher16bits):
     combinedArray = []
+
+    #change to numpy function
     for x in range (len(lower15bits)):
         addVal = (lower15bits[x]+ (higher16bits[x]<<16))
         combinedArray.append(addVal)
@@ -329,7 +335,10 @@ def combine(lower15bits, higher16bits):
 
 #TODO: This needs to be more robust
 # Sorts data into the type of MOSI transfer it came from
-def isConvert(data):
+def isConvert(data1, data2):
+
+    data = hex(data1 + (data2<<16))
+
     if data[2:6] == "ffff" or data[6:8] == "20":
         return False # Write
     else:
@@ -380,6 +389,7 @@ def compensate(numRepeats, commands):
 
     return newCommands
 
+
 ##################################
 ##########GRAPHING CLASS##########
 ##################################
@@ -392,9 +402,11 @@ class MainWindow(QtWidgets.QMainWindow):
         self.graphWidget = pg.PlotWidget()
         self.setCentralWidget(self.graphWidget)
         self.channelsList = [0]
+
+        self.graphWidget.setYRange(.1, .7, padding=0)
         
         for x in range(channelsToConvert+1): # Creates a array for each channel in the channel list
-            self.channelsList.append(list(range(400))) 
+            self.channelsList.append(list(range(100))) 
         
         self.channelsList.pop(0) # First channel in channel list is unusable
         self.graphWidget.setBackground('w')
@@ -417,20 +429,30 @@ class MainWindow(QtWidgets.QMainWindow):
         
     #Called by each MainWindow object by QTimer()
     def update_plot_data(self):
-        
-        current_data, _ = daq.ddr.read_adc(blk_multiples = 16) # Takes a block of MISO back out of the DDR
-        chan_data = daq.ddr.deswizzle(current_data)
-        chan_stack = np.vstack(
-                        (chan_data[0], chan_data[1], chan_data[2], chan_data[3]))
 
-        combine_stack = combine(chan_stack[0],chan_stack[1]) #taking top and bottom 16 bits together into 32 bit command
+        current_data, _ = daq.ddr.read_adc(blk_multiples = 64) # Takes a block of MISO back out of the DDR
+        chan_data = daq.ddr.deswizzle(current_data)
+        chan_stack = np.vstack((chan_data[0], chan_data[1], chan_data[2], chan_data[3]))
+
+        #combine_stack = combine(chan_stack[0],chan_stack[1]) #taking top and bottom 16 bits together into 32 bit command
 
         allConverts = []
 
+        #TODO: This block filtered through all results, eventually implement with better algo
+        '''
         #Filtering out the non-convert results
-        for x in combine_stack:
-            if (isConvert(hex(x))):
-                allConverts.append(ToVoltage(x))
+        for x in range (len(chan_data[0])):
+            if (isConvert(chan_data[0][x], chan_data[1][x])):
+                allConverts.append(ToVoltage(chan_data[0][x]))
+        '''
+
+        #Taking the first convert results and graphing to keep up timing
+        x=0
+        while(isConvert(chan_data[0][x], chan_data[1][x])==False):
+            x+=1
+
+        allConverts.append(ToVoltage(chan_data[0][x]))
+        
 
 
         #TODO: Make this modular
@@ -438,18 +460,6 @@ class MainWindow(QtWidgets.QMainWindow):
         
         self.lastCycleStart = self.beginTime
         self.beginTime = time.time()
-        #convertSkip = int(len(allConverts)/self.accuracy)
-        #timeSkip = (.8/self.accuracy)
-        
-
-        '''
-        for x in range (self.accuracy):
-            self.channelsList[1].append(allConverts[x*convertSkip])
-            self.channelsList[0].append(firstTime + (timeSkip*x))
-            #Delete old entries
-            self.channelsList[0].pop(0)
-            self.channelsList[1].pop(0)
-        '''
 
         #Adding the new entry
         self.channelsList[1].append(allConverts[0])
@@ -462,6 +472,7 @@ class MainWindow(QtWidgets.QMainWindow):
         #self.data_lines is the instance variable of the pg plot, update with timestamp and respective channel
         for n in range(len(self.data_lines)):
             self.data_lines[n].setData(self.channelsList[0], self.channelsList[1])
+        
         
         
 #Fills DDR with null commands, exits the python script
@@ -512,7 +523,6 @@ def numDuplicates(speedVar):
 if __name__ == "__main__":
     createYaml() #Creates the .yaml file in the .pyripherals folder 
 
-    #TODO: Are lines 40-61 necessary?
     # The boards.py file is located in the covg_fpga folder so we need to find that folder. If it is not above the current directory, the program fails.
     covg_fpga_path = os.getcwd()
     for i in range(15):
@@ -552,8 +562,6 @@ if __name__ == "__main__":
     daq = Daq(f)
     daq.ddr.parameters= {"data_version": daq.ddr.data_version}
 
-
-    #TODO: Do I only need one DAC?
     # fast DACs -- only use to set SPI controller data source to DDR and disable filters
     for i in [0,1,2,3,4,5]:
         daq.DAC[i].filter_select(operation="clear")
@@ -584,9 +592,6 @@ if __name__ == "__main__":
     # changing the length of transfer to 32-bit
     daq.DAC[0].set_ctrl_reg(0x3020)
     daq.DAC[0].filter_select(operation="clear")
-
-    #TODO: reimplement this with the stim setup commands
-    #STIM SETUP
     for x in range(len(STIM_SETUP)):
         daq.DAC[0].write(int(STIM_SETUP[x]))
  
@@ -624,7 +629,6 @@ if __name__ == "__main__":
 
     daq.ddr.data_arrays[0], daq.ddr.data_arrays[1] = splitCommandsToDataArrays(commandStructure, len(daq.ddr.data_arrays[0]))
 
-    #TODO: Check if this needs to be cycled through
     for i in [0,1,2,3,4,5]:
         daq.DAC[i].filter_select(operation="clear")
         daq.DAC[i].set_data_mux("DDR")
@@ -648,6 +652,7 @@ if __name__ == "__main__":
     daq.ddr.reset_mig_interface()
     daq.ddr.set_adc_dac_simultaneous() 
 
+    
     app= QtWidgets.QApplication(sys.argv) # Instantiation of Qt app
     obj = MainWindow(len(electrodesSampled))                    # Instantiation of the window
     obj.show()                            # Draw window
