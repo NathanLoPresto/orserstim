@@ -81,15 +81,4 @@ Step by step for project Initialization:
 
 This system is currently built for the specific needs of Dr. Orser’s sense and stim project but can be used as a general SPI controller but making modifications in the right places. First, changes could be made to the Verilog. Examples of this could be changing the width of the data in and out of the SPI controller, the speed of SPI transactions, or a change of the number of slave devices connected to the XEM7310 SPI controller. The best and easiest way to do this would be to download the same version of Vivado that the project was built in (Vivado 2022.1) and select the “open a project” option. The project file will be fpga_XEM7310.xpr in the orserstim/fpga_XEM7310 folder. After loading this project, you can make edits to the verilog, synthesize, implement and generate a bitstream for the project. The location of the bitfile after generating the bitstream should automatically match the current location of the .yaml file (will be in the .runs section of XEM7310).  
 
-
-### Pinout for FPGA breakout board: ###
-
-|Pin name| XEM7310 Pin| BRK7010 Pin|
-|!-------|!-----------|!-----------|
-|SCLK    |H3          |J4-5        |
-|CS      |K1          |J4-1        |
-|MOSI    |J1          |J4-3        |
-|MISO    |G2          |J4-8        |
-|GND     |J4          |J4-16       |
-
 NOTE: The pyripherals package prints when it reads the ddr. Find this file in your local drive and delete this line out of read_adc() to speed up the mosi pipeline
