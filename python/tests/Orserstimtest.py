@@ -6,7 +6,7 @@ Abe Stroschein, ajstroschein@stthomas.edu
 Dr. Lucas Koerner, koerner.lucas@stthomas.edu
 Nathan LoPresto, lopr5624@stthomas.edu
 """
-#Hello nathan
+
 #############
 ###IMPORTS###
 #############
@@ -403,7 +403,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.setCentralWidget(self.graphWidget)
         self.channelsList = [0]
 
-        self.graphWidget.setYRange(.1, .7, padding=0)
+        self.graphWidget.setYRange(.1, .7, padding=0) #This can be changed to set up max y bounds for graphing window
         
         for x in range(channelsToConvert+1): # Creates a array for each channel in the channel list
             self.channelsList.append(list(range(100))) 
@@ -458,6 +458,9 @@ class MainWindow(QtWidgets.QMainWindow):
         #TODO: Make this modular
         #allConverts = allConverts[0::2]
         
+
+        #This below is added to the graphing widget. A later implementation with another
+        #graphing software would just pull the allConverts array
         self.lastCycleStart = self.beginTime
         self.beginTime = time.time()
 
